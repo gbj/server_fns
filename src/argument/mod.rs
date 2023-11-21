@@ -1,10 +1,18 @@
 #[cfg(feature = "url")]
 pub mod url;
+pub mod json;
+pub mod cbor;
 
 use crate::request::Req;
-
+use axum::extract::FromRequestParts;
+use serde::Deserialize;
 pub trait ArgumentEncoding {
     const CONTENT_TYPE: &'static str;
+
+    type Error;
+}
+
+pub trait BodyEncoding{
 
     type Error;
 }
