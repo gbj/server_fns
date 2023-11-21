@@ -1,23 +1,24 @@
-use axum::body::HttpBody;
+use axum::body::{Bytes};
 use futures::Stream;
 use http::Request;
 use crate::request::Req;
 
-impl<B: HttpBody + Sized> Req<B> for Request<B>
+impl<B: Sized> Req<B> for Request<B>
 {
     fn as_url(&self) -> &str {
         todo!()
     }
 
-    fn into_string(self) -> String {
-        todo!()
+    fn try_into_string(self) -> Result<String, Error> {
+        self.into_body()
     }
 
-    fn into_bytes(self) -> Vec<u8> {
-        todo!()
+    async fn try_into_bytes(self) -> Result<Bytes, Error> {
+        hyper::body::to_bytes(self.into_body()).await
     }
 
-    fn into_stream(self) -> Box<dyn Stream<Item=B>> {
+
+    fn try_into_stream(self) -> dyn Stream<Item=B> {
         todo!()
     }
 }

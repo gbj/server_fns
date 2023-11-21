@@ -2,15 +2,16 @@ mod request;
 mod http_request;
 
 use futures::Stream;
-use http::Request;
+use serde::ser::Error;
+use bytes::Bytes;
 
-pub trait Req<State>
-    where State: Sized {
+pub trait Req<State, Error>
+    where State: Sized, Error: std::error::Error {
     fn as_url(&self) -> &str;
 
-    fn into_string(self) -> String;
+    fn try_into_string(self) -> Result<String, Error>;
 
-    fn into_bytes(self) -> Vec<u8>;
+    async fn try_into_bytes(self) -> Result<Bytes, Error>;
 
-    fn into_stream(self) -> dyn Stream<Item=State>;
+    fn try_into_stream(self) -> dyn Stream<Item=State>;
 }
