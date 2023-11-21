@@ -1,18 +1,23 @@
 #[cfg(feature = "serde_json")]
 pub mod serde_json;
-mod ciborium;
+#[cfg(feature = "ciborium")]
+pub mod ciborium;
+#[cfg(feature = "request")]
+pub mod response;
+#[cfg(feature = "request")]
+pub mod http_response;
 
 use crate::response::Res;
 
-pub trait OutputEncoding<T> {
+pub trait OutputEncoding<ErrorBody> {
     const CONTENT_TYPE: &'static str;
 
     type Error;
 }
 
-pub trait IntoRes<Enc, Response>
+pub trait IntoRes<Enc, Response, ErrorBody>
 where
-    Enc: OutputEncoding,
+    Enc: OutputEncoding<ErrorBody>,
     Response: Res,
     Self: Sized,
 {

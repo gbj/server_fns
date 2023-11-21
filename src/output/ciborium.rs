@@ -7,13 +7,13 @@ use super::{IntoRes, OutputEncoding};
 /// Returns output as a CBOR binary encoded by [`ciborium`].
 pub struct Ciborium;
 
-impl OutputEncoding<T> for Ciborium {
+impl<E> OutputEncoding<E> for Ciborium {
     const CONTENT_TYPE: &'static str = "application/cbor";
 
-    type Error = ciborium::ser::Error<T>;
+    type Error = ciborium::ser::Error<E>;
 }
 
-impl<T, Response> IntoRes<Ciborium, Response> for T
+impl<T, Response, ErrorBody> IntoRes<Ciborium, Response, ErrorBody> for T
     where
         T: Serialize,
         Response: Res,

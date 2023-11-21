@@ -1,22 +1,23 @@
 use super::{ArgumentEncoding, FromReq};
 use crate::request::Req;
 use serde::de::DeserializeOwned;
-
+use async_trait::async_trait;
 /// Passes URL-encoded arguments in the query string of a `GET` request.
 pub struct GetUrl;
 
-impl ArgumentEncoding for GetUrl {
+impl<ErrorBody> ArgumentEncoding<ErrorBody> for GetUrl {
     const CONTENT_TYPE: &'static str = "application/x-www-form-urlencoded";
 
     type Error = serde_qs::Error;
 }
-
-impl<T, State, Request> FromReq<State, Request, GetUrl> for T
+#[async_trait]
+impl<T, State, Request, StdErrorTrait, ErrorBody> FromReq<State, Request, StdErrorTrait, ErrorBody, GetUrl> for T
 where
     T: DeserializeOwned,
-    Request: Req<State>,
+    Request: Req<State, StdErrorTrait, ErrorBody> + Send + 'static,
+    StdErrorTrait: std::error::Error,
 {
-    fn from_req(req: Request) -> Result<Self, <GetUrl as ArgumentEncoding>::Error> {
+    async fn from_req(req: Request) -> Result<Self, <GetUrl as ArgumentEncoding<ErrorBody>>::Error> {
         let url = req.as_url();
         let args = serde_qs::from_str::<Self>(url)?;
         Ok(args)
@@ -26,19 +27,21 @@ where
 /// Passes URL-encoded arguments in the body of a `POST` request.
 pub struct PostUrl;
 
-impl ArgumentEncoding for PostUrl {
+impl<ErrorBody> ArgumentEncoding<ErrorBody> for PostUrl {
     const CONTENT_TYPE: &'static str = "application/x-www-form-urlencoded";
 
     type Error = serde_qs::Error;
 }
-
-impl<T, State, Request> FromReq<State, Request, PostUrl> for T
+#[async_trait]
+impl<T, State, Request, StdErrorTrait, ErrorBody> FromReq<State, Request, StdErrorTrait, ErrorBody, PostUrl> for T
 where
     T: DeserializeOwned,
-    Request: Req<State>,
+    Request: Req<State, StdErrorTrait, ErrorBody> + Send + 'static,
+    StdErrorTrait: std::error::Error,
+    serde_qs::Error: From<StdErrorTrait>,
 {
-    fn from_req(req: Request) -> Result<Self, <PostUrl as ArgumentEncoding>::Error> {
-        let body = req.into_string();
+    async fn from_req(req: Request) -> Result<Self, <PostUrl as ArgumentEncoding<ErrorBody>>::Error> {
+        let body = req.try_into_string()?;
         let args = serde_qs::from_str::<Self>(&body)?;
         Ok(args)
     }

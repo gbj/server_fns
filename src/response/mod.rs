@@ -1,3 +1,8 @@
+#[cfg(feature = "request")]
+pub mod response;
+#[cfg(feature = "request")]
+pub mod http_response;
+
 use futures::Stream;
 
 pub trait Res {
