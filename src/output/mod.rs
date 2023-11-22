@@ -7,19 +7,17 @@ pub mod response;
 #[cfg(feature = "serde_json")]
 pub mod serde_json;
 
-use crate::response::Res;
+use crate::{error::ServerFnError, response::Res};
 
-pub trait OutputEncoding<ErrorBody> {
+pub trait OutputEncoding {
     const CONTENT_TYPE: &'static str;
-
-    type Error;
 }
 
-pub trait IntoRes<Enc, Response, State, ErrorBody>
+pub trait IntoRes<Enc, Response>
 where
-    Enc: OutputEncoding<ErrorBody>,
-    Response: Res<State>,
+    Enc: OutputEncoding,
+    Response: Res,
     Self: Sized,
 {
-    fn into_res(self) -> Result<Response, Enc::Error>;
+    fn into_res(self) -> Result<Response, ServerFnError>;
 }
