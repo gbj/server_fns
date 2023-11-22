@@ -3,6 +3,8 @@ pub mod http_request;
 #[cfg(feature = "request")]
 pub mod request;
 
+use std::pin::Pin;
+
 use async_trait::async_trait;
 use bytes::Bytes;
 use futures::Stream;
@@ -21,5 +23,5 @@ where
 
     async fn try_into_bytes(self) -> Result<Bytes, Self::Error>;
 
-    fn try_into_stream(self) -> dyn Stream<Item = State>;
+    fn try_into_stream(self) -> Pin<Box<dyn Stream<Item = State> + Send + Sync>>;
 }
