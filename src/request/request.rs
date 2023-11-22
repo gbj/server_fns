@@ -2,7 +2,7 @@ use std::{pin::Pin, string::FromUtf8Error};
 
 use crate::request::Req;
 use async_trait::async_trait;
-use axum::body::Bytes;
+use bytes::Bytes;
 use futures::Stream;
 use http::Request;
 use hyper::body::HttpBody;
@@ -20,6 +20,10 @@ where
 
     fn as_url(&self) -> &str {
         todo!()
+    }
+
+    fn as_request(self) -> Self {
+        self
     }
 
     async fn try_into_string(self) -> Result<String, Self::Error> {

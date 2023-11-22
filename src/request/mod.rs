@@ -19,6 +19,8 @@ where
 
     fn as_url(&self) -> &str;
 
+    fn as_request(self) -> Self;
+
     async fn try_into_string(self) -> Result<String, Self::Error>;
 
     async fn try_into_bytes(self) -> Result<Bytes, Self::Error>;

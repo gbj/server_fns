@@ -33,3 +33,4 @@ Cargo.lock
 
 #/target
 #/Cargo.lock
+.idea

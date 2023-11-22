@@ -2,7 +2,6 @@ use super::{ArgumentEncoding, FromReq};
 use crate::request::Req;
 use async_trait::async_trait;
 use serde::de::DeserializeOwned;
-use serde_json::de::Read;
 /// Passes URL-encoded arguments in the query string of a `GET` request.
 pub struct GetUrl;
 
@@ -16,6 +15,8 @@ impl<T, State, Request> FromReq<State, Request, GetUrl> for T
 where
     T: DeserializeOwned,
     Request: Req<State> + Send + 'static,
+    serde_qs::Error: From<<Request as Req<State>>::Error>
+
 {
     async fn from_req(
         req: Request,
@@ -39,6 +40,8 @@ impl<T, State, Request> FromReq<State, Request, PostUrl> for T
 where
     T: DeserializeOwned,
     Request: Req<State> + Send + 'static,
+    serde_qs::Error: From<<Request as Req<State>>::Error>
+
 {
     async fn from_req(
         req: Request,

@@ -15,10 +15,10 @@ pub trait OutputEncoding<ErrorBody> {
     type Error;
 }
 
-pub trait IntoRes<Enc, Response, ErrorBody>
+pub trait IntoRes<Enc, Response, State, ErrorBody>
 where
     Enc: OutputEncoding<ErrorBody>,
-    Response: Res,
+    Response: Res<State>,
     Self: Sized,
 {
     fn into_res(self) -> Result<Response, Enc::Error>;
