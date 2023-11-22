@@ -17,6 +17,8 @@ where
     T: DeserializeOwned,
     Request: Req<State> + Send + 'static,
     ciborium::de::Error<Request::Body>: From<ciborium::de::Error<std::io::Error>>,
+    ciborium::de::Error<<Request as Req<State>>::Body>: From<<Request as Req<State>>::Error>
+
 {
     async fn from_req(
         req: Request,
