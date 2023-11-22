@@ -1,11 +1,11 @@
-#[cfg(feature = "serde_json")]
-pub mod serde_json;
 #[cfg(feature = "ciborium")]
 pub mod ciborium;
 #[cfg(feature = "request")]
-pub mod response;
-#[cfg(feature = "request")]
 pub mod http_response;
+#[cfg(feature = "request")]
+pub mod response;
+#[cfg(feature = "serde_json")]
+pub mod serde_json;
 
 use crate::response::Res;
 

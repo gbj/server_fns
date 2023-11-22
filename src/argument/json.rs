@@ -6,14 +6,13 @@ use serde::de::DeserializeOwned;
 pub struct PostJson;
 
 impl BodyEncoding for PostJson {
-
     type Error = impl std::error::Error;
 }
 
 impl<T, State, Request> FromReq<State, Request, PostJson> for T
-    where
-        T: DeserializeOwned,
-        Request: Req<State>,
+where
+    T: DeserializeOwned,
+    Request: Req<State>,
 {
     fn from_req(req: Request) -> Result<Self, <PostJson as BodyEncoding>::Error> {
         let args = serde_json::from_str::<Self>(&req.into_string())?;

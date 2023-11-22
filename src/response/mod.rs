@@ -1,7 +1,7 @@
 #[cfg(feature = "request")]
-pub mod response;
-#[cfg(feature = "request")]
 pub mod http_response;
+#[cfg(feature = "request")]
+pub mod response;
 
 use futures::Stream;
 

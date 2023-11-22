@@ -14,9 +14,9 @@ impl<E> OutputEncoding<E> for Ciborium {
 }
 
 impl<T, Response, ErrorBody> IntoRes<Ciborium, Response, ErrorBody> for T
-    where
-        T: Serialize,
-        Response: Res,
+where
+    T: Serialize,
+    Response: Res,
 {
     fn into_res(self) -> Result<Response, <Ciborium as OutputEncoding<T>>::Error> {
         let mut buffer: Vec<u8> = Vec::new();

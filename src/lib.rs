@@ -3,8 +3,8 @@ pub mod output;
 pub mod request;
 pub mod response;
 
-use async_trait::async_trait;
 use argument::ArgumentEncoding;
+use async_trait::async_trait;
 use output::{IntoRes, OutputEncoding};
 use request::Req;
 use response::Res;

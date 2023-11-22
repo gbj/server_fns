@@ -1,16 +1,16 @@
-#[cfg(feature = "url")]
-pub mod url;
-#[cfg(feature = "json")]
-pub mod json;
 #[cfg(feature = "cbor")]
 pub mod cbor;
 #[cfg(feature = "request")]
-pub mod request;
-#[cfg(feature = "request")]
 pub mod http_request;
+#[cfg(feature = "json")]
+pub mod json;
+#[cfg(feature = "request")]
+pub mod request;
+#[cfg(feature = "url")]
+pub mod url;
 
-use async_trait::async_trait;
 use crate::request::Req;
+use async_trait::async_trait;
 pub trait ArgumentEncoding<ErrorBody> {
     const CONTENT_TYPE: &'static str;
 
@@ -18,11 +18,10 @@ pub trait ArgumentEncoding<ErrorBody> {
 }
 
 pub trait BodyEncoding<ErrorBody> {
-
     type Error;
 }
 // Who needs an encoding when we have a request?
-pub trait RequestEncoding{
+pub trait RequestEncoding {
     type Error;
 }
 #[async_trait]
