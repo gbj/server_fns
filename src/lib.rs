@@ -15,9 +15,9 @@ use response::Res;
 use crate::argument::FromReq;
 
 #[async_trait]
-trait ServerFn<State, Request, Response>
+trait ServerFn<State, ResponseState, Request, Response>
 where
-    Response: Res,
+    Response: Res<ResponseState>,
     Request: Req<State> + Send + 'static,
     Request::Error: Display,
     Self: FromReq<State, Request, Self::ArgumentEnc>,
@@ -25,7 +25,7 @@ where
     type Request;
     type ArgumentEnc: ArgumentEncoding;
     type ResponseEnc: OutputEncoding;
-    type Output: IntoRes<Self::ResponseEnc, Response>;
+    type Output: IntoRes<Self::ResponseEnc, Response, ResponseState>;
 
     // the body of the fn
     fn call_fn_server(self) -> Self::Output;

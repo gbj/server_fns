@@ -13,10 +13,10 @@ pub trait OutputEncoding {
     const CONTENT_TYPE: &'static str;
 }
 
-pub trait IntoRes<Enc, Response>
+pub trait IntoRes<Enc, Response, State>
 where
     Enc: OutputEncoding,
-    Response: Res,
+    Response: Res<State>,
     Self: Sized,
 {
     fn into_res(self) -> Result<Response, ServerFnError>;
