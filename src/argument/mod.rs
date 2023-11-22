@@ -2,8 +2,8 @@
 pub mod cbor;
 #[cfg(feature = "request")]
 pub mod http_request;
-//#[cfg(feature = "serde_json")]
-//pub mod json;
+#[cfg(feature = "serde_json")]
+pub mod json;
 #[cfg(feature = "request")]
 pub mod request;
 #[cfg(feature = "url")]
