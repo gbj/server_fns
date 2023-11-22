@@ -24,6 +24,7 @@ ciborium = { version="0.2.1", optional = true }
 hyper = { version = "0.14", optional = true }
 bytes = "1.5.0"
 async-trait = "0.1.74"
+thiserror = "1.0.50"
 
 [features]
 actix = ["dep:actix-web"]

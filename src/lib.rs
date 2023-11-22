@@ -12,17 +12,16 @@ use response::Res;
 use crate::argument::FromReq;
 
 #[async_trait]
-trait ServerFn<State, Request, Response, StdErrorTrait, ErrorBody>
+trait ServerFn<State, Request, Response>
 where
     Response: Res,
-    Request: Req<State, StdErrorTrait, ErrorBody> + Send + 'static,
-    StdErrorTrait: std::error::Error,
-    Self: FromReq<State, Request, StdErrorTrait, ErrorBody, Self::ArgumentEnc>,
+    Request: Req<State> + Send + 'static,
+    Self: FromReq<State, Request, Self::ArgumentEnc>,
 {
     type Request;
-    type ArgumentEnc: ArgumentEncoding<ErrorBody>;
-    type ResponseEnc: OutputEncoding<ErrorBody>;
-    type Output: IntoRes<Self::ResponseEnc, Response, ErrorBody>;
+    type ArgumentEnc: ArgumentEncoding<Request::Body>;
+    type ResponseEnc: OutputEncoding<Request::Body>;
+    type Output: IntoRes<Self::ResponseEnc, Response, Request::Body>;
 
     // the body of the fn
     fn call_fn_server(self) -> Self::Output;

@@ -8,16 +8,18 @@ use bytes::Bytes;
 use futures::Stream;
 
 #[async_trait]
-pub trait Req<State, StdErrorTrait, ErrorBody>
+pub trait Req<State>
 where
     State: Sized,
-    StdErrorTrait: std::error::Error,
 {
+    type Body;
+    type Error;
+
     fn as_url(&self) -> &str;
 
-    fn try_into_string(self) -> Result<String, StdErrorTrait>;
+    async fn try_into_string(self) -> Result<String, Self::Error>;
 
-    async fn try_into_bytes(self) -> Result<Bytes, StdErrorTrait>;
+    async fn try_into_bytes(self) -> Result<Bytes, Self::Error>;
 
     fn try_into_stream(self) -> dyn Stream<Item = State>;
 }

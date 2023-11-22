@@ -2,6 +2,7 @@ use super::{ArgumentEncoding, FromReq};
 use crate::request::Req;
 use async_trait::async_trait;
 use serde::de::DeserializeOwned;
+use serde_json::de::Read;
 /// Passes URL-encoded arguments in the query string of a `GET` request.
 pub struct GetUrl;
 
@@ -11,16 +12,14 @@ impl<ErrorBody> ArgumentEncoding<ErrorBody> for GetUrl {
     type Error = serde_qs::Error;
 }
 #[async_trait]
-impl<T, State, Request, StdErrorTrait, ErrorBody>
-    FromReq<State, Request, StdErrorTrait, ErrorBody, GetUrl> for T
+impl<T, State, Request> FromReq<State, Request, GetUrl> for T
 where
     T: DeserializeOwned,
-    Request: Req<State, StdErrorTrait, ErrorBody> + Send + 'static,
-    StdErrorTrait: std::error::Error,
+    Request: Req<State> + Send + 'static,
 {
     async fn from_req(
         req: Request,
-    ) -> Result<Self, <GetUrl as ArgumentEncoding<ErrorBody>>::Error> {
+    ) -> Result<Self, <GetUrl as ArgumentEncoding<Request::Body>>::Error> {
         let url = req.as_url();
         let args = serde_qs::from_str::<Self>(url)?;
         Ok(args)
@@ -36,18 +35,15 @@ impl<ErrorBody> ArgumentEncoding<ErrorBody> for PostUrl {
     type Error = serde_qs::Error;
 }
 #[async_trait]
-impl<T, State, Request, StdErrorTrait, ErrorBody>
-    FromReq<State, Request, StdErrorTrait, ErrorBody, PostUrl> for T
+impl<T, State, Request> FromReq<State, Request, PostUrl> for T
 where
     T: DeserializeOwned,
-    Request: Req<State, StdErrorTrait, ErrorBody> + Send + 'static,
-    StdErrorTrait: std::error::Error,
-    serde_qs::Error: From<StdErrorTrait>,
+    Request: Req<State> + Send + 'static,
 {
     async fn from_req(
         req: Request,
-    ) -> Result<Self, <PostUrl as ArgumentEncoding<ErrorBody>>::Error> {
-        let body = req.try_into_string()?;
+    ) -> Result<Self, <PostUrl as ArgumentEncoding<Request::Body>>::Error> {
+        let body = req.try_into_string().await?;
         let args = serde_qs::from_str::<Self>(&body)?;
         Ok(args)
     }

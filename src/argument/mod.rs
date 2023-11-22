@@ -11,13 +11,13 @@ pub mod url;
 
 use crate::request::Req;
 use async_trait::async_trait;
-pub trait ArgumentEncoding<ErrorBody> {
+pub trait ArgumentEncoding<ReqBody> {
     const CONTENT_TYPE: &'static str;
 
     type Error;
 }
 
-pub trait BodyEncoding<ErrorBody> {
+pub trait BodyEncoding {
     type Error;
 }
 // Who needs an encoding when we have a request?
@@ -25,12 +25,11 @@ pub trait RequestEncoding {
     type Error;
 }
 #[async_trait]
-pub trait FromReq<State, Request, StdErrorTrait, ErrorBody, Enc>
+pub trait FromReq<State, Request, Enc>
 where
-    Enc: ArgumentEncoding<ErrorBody>,
-    Request: Req<State, StdErrorTrait, ErrorBody> + Send,
+    Enc: ArgumentEncoding<Request::Body>,
+    Request: Req<State> + Send,
     Self: Sized,
-    StdErrorTrait: std::error::Error,
 {
     async fn from_req(req: Request) -> Result<Self, Enc::Error>;
 }
