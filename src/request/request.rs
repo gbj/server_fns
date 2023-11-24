@@ -18,10 +18,6 @@ where
     type Body = B;
     type Error = RequestError<B>;
 
-    fn as_url(&self) -> &str {
-        todo!()
-    }
-
     fn as_request(self) -> Self {
         self
     }

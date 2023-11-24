@@ -11,13 +11,14 @@ impl OutputEncoding for SerdeJson {
     const CONTENT_TYPE: &'static str = "application/json";
 }
 
-impl<T, Response> IntoRes<SerdeJson, Response> for T
+impl<T, Response, State> IntoRes<SerdeJson, Response, State> for T
 where
     T: Serialize,
-    Response: Res,
+    Response: Res<State>,
 {
     fn into_res(self) -> Result<Response, ServerFnError> {
         let data = serde_json::to_string(&self)?;
-        Ok(Response::from_string(data))
+
+        Ok(Response::try_into_string(data))
     }
 }

@@ -14,6 +14,7 @@ use response::Res;
 
 use crate::argument::FromReq;
 
+//TODO: Reduce IntoRes and IntoReq into IntoMessage and ArgumentEncoding/OutputEncoding
 #[async_trait]
 trait ServerFn<State, ResponseState, Request, Response>
 where
@@ -26,10 +27,11 @@ where
     type ArgumentEnc: ArgumentEncoding;
     type ResponseEnc: OutputEncoding;
     type Output: IntoRes<Self::ResponseEnc, Response, ResponseState>;
-
+    type Input: IntoReq<Self::RequestEnc, Request, RequestState>;
     // the body of the fn
     fn call_fn_server(self) -> Self::Output;
 
+    /// This would encapsulate the server fn run on the server
     async fn respond_to_request(req: Request) -> Result<Response, ServerFnError> {
         let this = Self::from_req(req).await?;
         let output = this.call_fn_server();
@@ -38,4 +40,5 @@ where
             .map_err(|e| ServerFnError::Response(e.to_string()))?;
         Ok(res)
     }
+    async fn respond_to_response(res: Response) -> Result<Self::Output, ServerFnError>;
 }
