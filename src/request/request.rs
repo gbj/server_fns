@@ -4,12 +4,12 @@ use crate::request::Req;
 use async_trait::async_trait;
 use bytes::Bytes;
 use futures::Stream;
-use http::Request;
+use http::{HeaderMap, HeaderValue, Method, Request, request::Parts, Uri};
 use hyper::body::HttpBody;
 use thiserror::Error;
 
 #[async_trait]
-impl<B: Sized + Send + Sync> Req<B> for Request<B>
+impl<'req, B: Sized + Send + Sync> Req<B> for Request<B>
 where
     B: HttpBody,
     B::Data: Send + Sync,
@@ -17,13 +17,50 @@ where
 {
     type Body = B;
     type Error = RequestError<B>;
+    type Parts = Parts;
+    type Uri = ();
+    type Builder = ();
+    type Method = ();
+    type HeaderMap = ();
 
-    fn as_url(&self) -> &str {
+    fn new() -> Self {
         todo!()
     }
 
-    fn as_request(self) -> Self {
-        self
+    fn into_parts(self) -> (Parts, B) {
+       self.into_parts()
+    }
+
+    fn into_body(self) -> B {
+        self.into_body()
+    }
+
+    fn headers(&self) -> &'req HeaderMap<HeaderValue> {
+        self.headers()
+    }
+
+    fn headers_mut(&mut self) -> &mut HeaderMap<HeaderValue> {
+        self.headers_mut()
+    }
+
+    fn uri(&self) -> &'req Uri{
+    self.uri()
+    }
+
+    fn uri_mut(&mut self) -> &mut Uri {
+        self.uri_mut()
+    }
+
+    fn method(&self) -> &'req Method {
+        self.method()
+    }
+
+    fn method_mut(&mut self) -> &mut Method {
+        self.method_mut()
+    }
+
+    fn builder() -> Self::Builder {
+        todo!()
     }
 
     async fn try_into_string(self) -> Result<String, Self::Error> {

@@ -1,31 +1,28 @@
-pub mod argument;
 pub mod error;
-pub mod output;
+pub mod codec;
 pub mod request;
 pub mod response;
 
-use argument::ArgumentEncoding;
 use async_trait::async_trait;
 use core::fmt::Display;
 use error::ServerFnError;
-use output::{IntoRes, OutputEncoding};
 use request::Req;
 use response::Res;
 
-use crate::argument::FromReq;
+use crate::codec::{Codec, Encoding};
 
 #[async_trait]
-trait ServerFn<State, ResponseState, Request, Response>
+trait ServerFn<RequestState, ResponseState, Request, Response>
 where
     Response: Res<ResponseState>,
-    Request: Req<State> + Send + 'static,
+    Request: Req<RequestState> + Send + 'static,
     Request::Error: Display,
-    Self: FromReq<State, Request, Self::ArgumentEnc>,
+    Self: Codec<RequestState, ResponseState, Request, Response, Self::ArgumentEnc>,
 {
     type Request;
-    type ArgumentEnc: ArgumentEncoding;
-    type ResponseEnc: OutputEncoding;
-    type Output: IntoRes<Self::ResponseEnc, Response, ResponseState>;
+    type Response;
+    type Encoding: Encoding;
+    type Output: Codec<RequestState, ResponseState, Request, Response, Self::Encoding>;
 
     // the body of the fn
     fn call_fn_server(self) -> Self::Output;
@@ -35,6 +32,7 @@ where
         let output = this.call_fn_server();
         let res = output
             .into_res()
+            .await
             .map_err(|e| ServerFnError::Response(e.to_string()))?;
         Ok(res)
     }
