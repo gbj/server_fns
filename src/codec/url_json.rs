@@ -4,6 +4,7 @@ use super::{Encoding, Codec};
 use crate::{error::ServerFnError, request::Req};
 use async_trait::async_trait;
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 use crate::response::Res;
 
 /// Pass arguments and receive responses as JSON in the body of a POST Request
@@ -17,12 +18,11 @@ impl Encoding for GetUrlJson {
 #[async_trait]
 impl<T, RequestState, ResponseState, Request, Response> Codec<RequestState, ResponseState, Request, Response, GetUrlJson> for T
     where
-        T: DeserializeOwned,
+        T: DeserializeOwned + Serialize + Send,
         Request: Req<RequestState> + Send + 'static,
         Request::Error: Display,
         Response: Res<ResponseState> + Send + 'static,
         Response::Error: Display,
-        ciborium::de::Error<Request::Body>: From<ciborium::de::Error<std::io::Error>> + Display,
 {
     async fn from_req(req: Request) -> Result<Self, ServerFnError> {
         let string = req
@@ -39,11 +39,15 @@ impl<T, RequestState, ResponseState, Request, Response> Codec<RequestState, Resp
     }
 
     async fn from_res(res: Response) -> Result<Self, ServerFnError> {
-        todo!()
+        let (_parts, body) = res.into_parts();
+        let data = res.try_into_string()?;
+        serde_json::from_str(&data).map_err(|e| ServerFnError::Deserialization(e.to_string()))
     }
 
     async fn into_res(self) -> Result<Response, ServerFnError> {
+        // Need to catch and error here, or handle Errors at a higher level
         let data = serde_json::to_string(&self)?;
-        Ok(Response::from_string(data))
+        let re = Response::new(status, headers, body );
+        Ok(res)
     }
 }

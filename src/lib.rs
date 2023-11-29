@@ -14,10 +14,12 @@ use crate::codec::{Codec, Encoding};
 #[async_trait]
 trait ServerFn<RequestState, ResponseState, Request, Response>
 where
-    Response: Res<ResponseState>,
+    Response: Res<ResponseState> + Send + 'static,
     Request: Req<RequestState> + Send + 'static,
     Request::Error: Display,
-    Self: Codec<RequestState, ResponseState, Request, Response, Self::ArgumentEnc>,
+    Self: Codec<RequestState, ResponseState, Request, Response, Self::Encoding>,
+    <Response as Res<ResponseState>>::Error: Display,
+
 {
     type Request;
     type Response;

@@ -18,6 +18,9 @@ impl<B: Sized + Send + Sync> Res<B> for Response<B>
     type Body = B;
     type Error = ResponseError<B>;
 
+    fn new() -> Response<B>{
+        Response
+    }
     async fn try_into_string(self) -> Result<String, Self::Error> {
         let body_bytes = hyper::body::to_bytes(self.into_body())
             .await

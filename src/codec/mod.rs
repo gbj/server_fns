@@ -9,7 +9,6 @@ pub mod json;
 
 pub use crate::{error::ServerFnError, request::Req};
 use async_trait::async_trait;
-use hyper::Server;
 use crate::response::Res;
 use core::fmt::Display;
 pub trait Encoding {

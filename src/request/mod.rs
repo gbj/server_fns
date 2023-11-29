@@ -8,7 +8,6 @@ use std::pin::Pin;
 use async_trait::async_trait;
 use bytes::Bytes;
 use futures::Stream;
-use http::{HeaderMap, HeaderValue};
 
 #[async_trait]
 pub trait Req<State>
@@ -23,7 +22,6 @@ where
     type Method;
     type HeaderMap;
 
-    fn new() -> Self;
     fn into_parts(self) -> (Self::Parts,Self::Body);
     fn body(&self) -> &Self::Body;
     fn body_mut(&mut self) -> &mut Self::Body;

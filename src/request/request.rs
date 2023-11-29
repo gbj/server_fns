@@ -5,6 +5,7 @@ use async_trait::async_trait;
 use bytes::Bytes;
 use futures::Stream;
 use http::{HeaderMap, HeaderValue, Method, Request, request::Parts, Uri};
+use http::request::Builder;
 use hyper::body::HttpBody;
 use thiserror::Error;
 
@@ -18,14 +19,10 @@ where
     type Body = B;
     type Error = RequestError<B>;
     type Parts = Parts;
-    type Uri = ();
-    type Builder = ();
-    type Method = ();
-    type HeaderMap = ();
-
-    fn new() -> Self {
-        todo!()
-    }
+    type Uri = Uri;
+    type Builder = Builder;
+    type Method = Method;
+    type HeaderMap = HeaderMap;
 
     fn into_parts(self) -> (Parts, B) {
        self.into_parts()
@@ -60,7 +57,7 @@ where
     }
 
     fn builder() -> Self::Builder {
-        todo!()
+        Builder::new()
     }
 
     async fn try_into_string(self) -> Result<String, Self::Error> {
