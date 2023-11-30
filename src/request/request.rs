@@ -7,11 +7,11 @@ use http::Request;
 use thiserror::Error;
 
 #[async_trait]
-impl<'req, B: Sized + Send + Sync> Req<B> for Request<B>
+impl<'req, B: Sized + Send> Req<B> for Request<B>
 where
     B: HttpBody,
-    B::Data: Send + Sync,
-    B::Error: Send + Sync,
+    B::Data: Send,
+    B::Error: Send,
 {
 }
 

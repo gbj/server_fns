@@ -4,11 +4,11 @@ use http::Response;
 use std::string::FromUtf8Error;
 use thiserror::Error;
 
-impl<B: Sized + Send + Sync> Res<B> for Response<B>
+impl<B: Sized + Send> Res<B> for Response<B>
 where
     B: HttpBody,
-    B::Data: Send + Sync,
-    B::Error: Send + Sync,
+    B::Data: Send,
+    B::Error: Send,
 {
 }
 

@@ -2,8 +2,6 @@
 pub mod cbor;
 #[cfg(feature = "json")]
 pub mod json;
-#[cfg(feature = "manual")]
-pub mod manual;
 #[cfg(feature = "url_json")]
 pub mod url_json;
 
@@ -32,10 +30,10 @@ pub trait Codec<
     Response: Res<ResponseBody> + Send,
     IntoRequest: Req<IntoRequestBody> + Send,
     IntoResponse: Res<IntoResponseBody> + Send,
-    RequestBody: Sync,
-    ResponseBody: Sync,
-    IntoRequestBody: Sync,
-    IntoResponseBody: Sync,
+    //RequestBody: Sync,
+    //ResponseBody: Sync,
+    //IntoRequestBody: Sync,
+    //IntoResponseBody: Sync,
     Self: Sized,
 {
     async fn from_req(req: Request) -> Result<Self, ServerFnError>;
