@@ -10,20 +10,19 @@ pub mod json;
 pub use crate::{error::ServerFnError, request::Req};
 use async_trait::async_trait;
 use crate::response::Res;
-use core::fmt::Display;
 pub trait Encoding {
     const REQUEST_CONTENT_TYPE: &'static str;
     const RESPONSE_CONTENT_TYPE: &'static str;
 }
 
 #[async_trait]
-pub trait Codec<RequestState, ResponseState, Request, Response, Enc>
+pub trait Codec<RequestBody, ResponseBody, Request, Response, Enc>
     where
         Enc: Encoding,
-        Request: Req<RequestState> + Send,
-        Request::Error: Display,
-        Response: Res<ResponseState> + Send,
-        Response::Error: Display,
+        Request: Req<RequestBody> + Send,
+        Response: Res<ResponseBody> + Send,
+        RequestBody: Sync,
+        ResponseBody: Sync,
         Self: Sized,{
     async fn from_req(req: Request) -> Result <Self, ServerFnError>;
     async fn into_req(self) -> Result<Request, ServerFnError>;

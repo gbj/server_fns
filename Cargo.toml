@@ -4,32 +4,33 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-serde = { version = "1", optional = true, features = ["derive"] }
+serde = { version = "1.0.189", optional = true, features = ["derive"] }
 
 ## servers 
 # actix 
-actix-web = { version = "4", optional = true }
+actix-web = { version = "4.4.0", optional = true }
 # axum
-axum = { version = "0.6", optional = true }
+axum = { version = "0.7", optional = true }
 
 ## input encodings 
-serde_qs = { version = "0.12", optional = true }
+serde_qs = { version = "0.12.0", optional = true }
 
 ## output encodings 
 # serde 
-serde_json = { version = "1", optional = true }
-futures = "0.3.29"
-http = { version = "1.0.0", optional = true }
-ciborium = { version="0.2.1", optional = true }
-hyper = { version = "0.14", optional = true }
+serde_json = { version = "1.0.107", optional = true }
+futures = "0.3.28"
+http = { version = "1", optional = true }
+ciborium = { version = "0.2.1", optional = true }
+hyper = { version = "1", optional = true }
 bytes = "1.5.0"
 async-trait = "0.1.74"
 thiserror = "1.0.50"
+http-body-util = { version = "0.1.0", optional = true }
 
 [features]
 actix = ["dep:actix-web"]
-axum = ["dep:axum", "dep:http", "dep:hyper"]
-json = ["dep:serde", "dep:serde_json"]
-url_json = ["dep:serde", "dep:serde_json"]
+axum = ["dep:axum", "dep:http", "dep:hyper", "dep:http-body-util"]
+json = ["dep:serde", "dep:serde_json", "dep:http"]
+url_json = ["dep:serde", "dep:serde_json", "dep:serde_qs", "dep:http"]
 cbor = ["dep:ciborium", "dep:serde"]
 manual = ["dep:http", "dep:hyper", "dep:serde"]

@@ -4,27 +4,25 @@ pub mod request;
 pub mod response;
 
 use async_trait::async_trait;
-use core::fmt::Display;
 use error::ServerFnError;
 use request::Req;
 use response::Res;
-
 use crate::codec::{Codec, Encoding};
 
 #[async_trait]
-trait ServerFn<RequestState, ResponseState, Request, Response>
+trait ServerFn<RequestBody, ResponseBody, Request, Response>
 where
-    Response: Res<ResponseState> + Send + 'static,
-    Request: Req<RequestState> + Send + 'static,
-    Request::Error: Display,
-    Self: Codec<RequestState, ResponseState, Request, Response, Self::Encoding>,
-    <Response as Res<ResponseState>>::Error: Display,
+    Response: Res<ResponseBody> + Send + 'static,
+    Request: Req<RequestBody> + Send + 'static,
+    RequestBody: Send + Sync,
+    ResponseBody: Send + Sync,
+    Self: Codec<RequestBody, ResponseBody, Request, Response, Self::Encoding>,
 
 {
     type Request;
     type Response;
     type Encoding: Encoding;
-    type Output: Codec<RequestState, ResponseState, Request, Response, Self::Encoding>;
+    type Output: Codec<RequestBody, ResponseBody, Request, Response, Self::Encoding>;
 
     // the body of the fn
     fn call_fn_server(self) -> Self::Output;
