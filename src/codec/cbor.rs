@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use super::{Encoding, Codec};
+use super::{Codec, Encoding};
 use crate::{error::ServerFnError, request::Req};
 use async_trait::async_trait;
 use serde::de::DeserializeOwned;
@@ -14,12 +14,13 @@ impl Encoding for PostCbor {
 }
 
 #[async_trait]
-impl<T, RequestState, ResponseState, Request, Response> Codec<RequestState, ResponseState, Request, Response, PostCbor> for T
-    where
-        T: DeserializeOwned,
-        Request: Req<RequestState> + Send + 'static,
-        Request::Error: Display,
-        ciborium::de::Error<Request::Body>: From<ciborium::de::Error<std::io::Error>> + Display,
+impl<T, RequestState, ResponseState, Request, Response>
+    Codec<RequestState, ResponseState, Request, Response, PostCbor> for T
+where
+    T: DeserializeOwned,
+    Request: Req<RequestState> + Send + 'static,
+    Request::Error: Display,
+    ciborium::de::Error<Request::Body>: From<ciborium::de::Error<std::io::Error>> + Display,
 {
     async fn from_req(req: Request) -> Result<Self, ServerFnError> {
         let bytes = req
@@ -36,7 +37,7 @@ impl<T, RequestState, ResponseState, Request, Response> Codec<RequestState, Resp
         let mut buffer: Vec<u8> = Vec::new();
         ciborium::ser::into_writer(&self, &mut buffer)?;
         let mut req = Request::new();
-        req.insert_header(http::header::CONTENT_TYPE, );
+        req.insert_header(http::header::CONTENT_TYPE);
     }
     async fn from_res(res: Response) -> Result<Self, ServerFnError> {
         todo!()
@@ -47,7 +48,6 @@ impl<T, RequestState, ResponseState, Request, Response> Codec<RequestState, Resp
         ciborium::ser::into_writer(&self, &mut buffer)?;
 
         let mut response = Response::new();
-        Response
 
         Ok(Response::from_bytes(buffer))
     }

@@ -1,15 +1,16 @@
-use std::string::FromUtf8Error;
-use http::Response;
 use super::Res;
 use axum::body::HttpBody;
+use http::Response;
+use std::string::FromUtf8Error;
 use thiserror::Error;
 
 impl<B: Sized + Send + Sync> Res<B> for Response<B>
-    where
-        B: HttpBody,
-        B::Data: Send + Sync,
-        B::Error: Send + Sync,
-{}
+where
+    B: HttpBody,
+    B::Data: Send + Sync,
+    B::Error: Send + Sync,
+{
+}
 
 #[derive(Error, Debug)]
 pub enum ResponseError<B: HttpBody> {

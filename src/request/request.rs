@@ -1,9 +1,9 @@
-use std::{string::FromUtf8Error};
+use std::string::FromUtf8Error;
 
 use crate::request::Req;
 use async_trait::async_trait;
-use http::{Request};
 use axum::body::HttpBody;
+use http::Request;
 use thiserror::Error;
 
 #[async_trait]
@@ -12,8 +12,8 @@ where
     B: HttpBody,
     B::Data: Send + Sync,
     B::Error: Send + Sync,
-{}
-
+{
+}
 
 #[derive(Error, Debug)]
 pub enum RequestError<B: HttpBody> {
