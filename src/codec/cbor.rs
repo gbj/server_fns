@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
 use super::{Codec, Encoding};
-use crate::error::ServerFnError;
+use crate::error::{ServerFnError, IntoErrorResponse};
 use async_trait::async_trait;
 use axum::body::{Body, HttpBody};
 use http_body_util::BodyExt;
@@ -75,9 +75,12 @@ where
             .map_err(|e| ServerFnError::Args(e.to_string()))
     }
 
-    async fn into_res(self) -> Result<http::Response<Body>, ServerFnError> {
+    async fn into_res(self) -> http::Response<Body> {
         let mut buffer: Vec<u8> = Vec::new();
-        ciborium::ser::into_writer(&self, &mut buffer)?;
+        match ciborium::ser::into_writer(&self, &mut buffer) {
+            Ok(_) => (),
+            Err(e) => return e.into_err_res(),
+        };
 
         let res = http::Response::builder()
             .status(200)
@@ -85,7 +88,8 @@ where
                 http::header::CONTENT_TYPE,
                 <PostCbor as Encoding>::REQUEST_CONTENT_TYPE,
             )
-            .body(Body::from(buffer))?;
-        Ok(res)
+            .body(Body::from(buffer))
+            .unwrap();
+        res
     }
 }

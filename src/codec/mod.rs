@@ -30,15 +30,11 @@ pub trait Codec<
     Response: Res<ResponseBody> + Send,
     IntoRequest: Req<IntoRequestBody> + Send,
     IntoResponse: Res<IntoResponseBody> + Send,
-    //RequestBody: Sync,
-    //ResponseBody: Sync,
-    //IntoRequestBody: Sync,
-    //IntoResponseBody: Sync,
     Self: Sized,
 {
     async fn from_req(req: Request) -> Result<Self, ServerFnError>;
     async fn into_req(self) -> Result<IntoRequest, ServerFnError>;
 
     async fn from_res(res: Response) -> Result<Self, ServerFnError>;
-    async fn into_res(self) -> Result<IntoResponse, ServerFnError>;
+    async fn into_res(self) -> IntoResponse;
 }

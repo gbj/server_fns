@@ -1,7 +1,17 @@
+#[cfg(feature = "actix")]
+use actix_web::HttpResponse;
+#[cfg(feature = "axum")]
+use axum::body::Body;
+#[cfg(feature = "axum")]
+use http::response::Response;
 use serde::{Deserialize, Serialize};
-use std::{error, fmt, ops, sync::Arc};
+use std::{
+    error,
+    fmt::{self, Display},
+    ops,
+    sync::Arc,
+};
 use thiserror::Error;
-
 /// This is a result type into which any error can be converted,
 /// and which can be used directly in your `view`.
 ///
@@ -158,3 +168,20 @@ impl From<ServerFnError> for ServerFnErrorErr {
         }
     }
 }
+
+/// Implement default error handling
+pub trait IntoErrorResponse<E>
+where
+    E: std::error::Error + Display,
+    Self: Display + Sized,
+{
+    fn into_err_res(self) -> http::response::Response<Body> {
+        // Construct Response with Error Code
+        let res = Response::builder()
+            .status(http::StatusCode::INTERNAL_SERVER_ERROR)
+            .body(Body::from(self.to_string()))
+            .unwrap();
+        res
+    }
+}
+impl<E> IntoErrorResponse<E> for E where E: std::error::Error {}

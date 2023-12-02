@@ -61,10 +61,7 @@ trait ServerFn<
     async fn respond_to_request(req: Request) -> Result<IntoResponse, ServerFnError> {
         let this = Self::from_req(req).await?;
         let output = this.call_fn_server();
-        let res = output
-            .into_res()
-            .await
-            .map_err(|e| ServerFnError::Response(e.to_string()))?;
+        let res = output.into_res().await;
         Ok(res)
     }
 }

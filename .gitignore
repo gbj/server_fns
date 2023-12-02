@@ -34,3 +34,7 @@ Cargo.lock
 #/target
 #/Cargo.lock
 .idea
+.DS_Store
+.direnv
+.envrc
+.vscode

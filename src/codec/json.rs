@@ -1,13 +1,12 @@
 use std::fmt::Display;
 
 use super::{Codec, Encoding};
-use crate::{error::ServerFnError};
+use crate::error::{IntoErrorResponse, ServerFnError};
 use async_trait::async_trait;
+use axum::body::{Body, HttpBody};
+use http_body_util::BodyExt;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use axum::body::HttpBody;
-use http_body_util::BodyExt;
-
 /// Pass arguments and receive responses as JSON in the body of a POST Request
 pub struct PostJson;
 
@@ -22,10 +21,10 @@ impl<T, RequestBody, ResponseBody>
         ResponseBody,
         http::Request<RequestBody>,
         http::Response<ResponseBody>,
-        String,
-        String,
-        http::Request<String>,
-        http::Response<String>,
+        Body,
+        Body,
+        http::Request<Body>,
+        http::Response<Body>,
         PostJson,
     > for T
 where
@@ -51,7 +50,7 @@ where
         Ok(args)
     }
 
-    async fn into_req(self) -> Result<http::Request<String>, ServerFnError> {
+    async fn into_req(self) -> Result<http::Request<Body>, ServerFnError> {
         let args = serde_json::to_string(&self)?;
         let req = http::Request::builder()
             .method("GET")
@@ -59,7 +58,7 @@ where
                 http::header::CONTENT_TYPE,
                 <PostJson as Encoding>::REQUEST_CONTENT_TYPE,
             )
-            .body(args)?;
+            .body(Body::from(args))?;
         Ok(req)
     }
 
@@ -76,17 +75,24 @@ where
             .map_err(|e| ServerFnError::Deserialization(e.to_string()))
     }
 
-    async fn into_res(self) -> Result<http::Response<String>, ServerFnError> {
+    async fn into_res(self) -> http::Response<Body> {
         // Need to catch and err or here, or handle Errors at a higher level
-        let data = serde_json::to_string(&self)?;
+        let data = match serde_json::to_string(&self) {
+            Ok(d) => d,
+            Err(e) => return e.into_err_res(),
+        };
         let builder = http::Response::builder();
-        let res = builder
+        let res = match builder
             .status(200)
             .header(
                 http::header::CONTENT_TYPE,
                 <PostJson as Encoding>::RESPONSE_CONTENT_TYPE,
             )
-            .body(data)?;
-        Ok(res)
+            .body(Body::from(data))
+        {
+            Ok(r) => r,
+            Err(e) => return e.into_err_res(),
+        };
+        res
     }
 }
