@@ -26,6 +26,11 @@ bytes = "1.5.0"
 async-trait = "0.1.74"
 thiserror = "1.0.50"
 http-body-util = { version = "0.1.0", optional = true }
+rkyv = { version = "0.7.39", features = [
+  "validation",
+  "uuid",
+  "strict",
+], optional = true }
 
 [features]
 actix = ["dep:actix-web"]
@@ -33,3 +38,4 @@ axum = ["dep:axum", "dep:http", "dep:hyper", "dep:http-body-util"]
 json = ["dep:serde", "dep:serde_json", "dep:http"]
 url_json = ["dep:serde", "dep:serde_json", "dep:serde_qs", "dep:http"]
 cbor = ["dep:ciborium", "dep:serde"]
+rkyv = ["dep:rkyv", "dep:http", "dep:serde"]

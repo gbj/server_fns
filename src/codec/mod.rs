@@ -2,9 +2,10 @@
 pub mod cbor;
 #[cfg(feature = "json")]
 pub mod json;
+#[cfg(feature = "rkyv")]
+pub mod rkyv;
 #[cfg(feature = "url_json")]
 pub mod url_json;
-
 use crate::response::Res;
 pub use crate::{error::ServerFnError, request::Req};
 use async_trait::async_trait;
