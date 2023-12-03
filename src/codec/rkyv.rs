@@ -4,6 +4,7 @@ use super::{Codec, Encoding};
 use crate::error::{IntoErrorResponse, ServerFnError};
 use async_trait::async_trait;
 use axum::body::{Body, HttpBody};
+use bytes::Bytes;
 use http_body_util::BodyExt;
 use rkyv::{
     de::deserializers::SharedDeserializeMap, ser::serializers::AllocSerializer,
@@ -53,7 +54,8 @@ where
     }
 
     async fn into_req(self) -> Result<http::Request<Body>, ServerFnError> {
-        let bytes = rkyv::to_bytes::<T, 1024>(&self)?.into_vec();
+        let encoded = rkyv::to_bytes::<T, 1024>(&self)?;
+        let bytes = Bytes::copy_from_slice(encoded.as_ref());
         let req = http::Request::builder()
             .method("POST")
             .header(
@@ -76,10 +78,12 @@ where
     }
 
     async fn into_res(self) -> http::Response<Body> {
-        let bytes = match rkyv::to_bytes::<T, 1024>(&self) {
-            Ok(b) => b.into_vec(),
+        let encoded = match rkyv::to_bytes::<T, 1024>(&self) {
+            Ok(b) => b,
             Err(e) => return e.into_err_res(),
         };
+
+        let bytes = Bytes::copy_from_slice(encoded.as_ref());
         let res = http::Response::builder()
             .status(200)
             .header(
