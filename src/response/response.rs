@@ -4,18 +4,10 @@ use http::Response;
 use std::string::FromUtf8Error;
 use thiserror::Error;
 
-impl<B: Sized + Send> Res<B> for Response<B>
+impl<B: Sized + Send> Res for Response<B>
 where
     B: HttpBody,
     B::Data: Send,
     B::Error: Send,
 {
-}
-
-#[derive(Error, Debug)]
-pub enum ResponseError<B: HttpBody> {
-    #[error("Error converting request body to bytes.")]
-    BodyToBytes(B::Error),
-    #[error("Response body was not a valid UTF-8 string.")]
-    Utf8(FromUtf8Error),
 }

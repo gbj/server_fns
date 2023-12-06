@@ -3,4 +3,4 @@ pub mod http_response;
 #[cfg(feature = "axum")]
 pub mod response;
 
-pub trait Res<ResponseBody> {}
+pub trait Res {}

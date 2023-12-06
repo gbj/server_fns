@@ -1,5 +1,7 @@
-use super::{Codec, Encoding};
+use super::{Encoding, FromReq, FromRes, IntoReq, Req};
 use crate::error::{IntoErrorResponse, ServerFnError};
+use crate::request::ReqFromString;
+use crate::response::Res;
 use async_trait::async_trait;
 use axum::body::{Body, HttpBody};
 use http_body_util::BodyExt;
@@ -7,51 +9,60 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::fmt::Display;
 /// Pass arguments and receive responses as JSON in the body of a POST Request
-pub struct GetUrlJson;
-pub struct PostUrlJson;
+pub struct GetUrl;
+pub struct PostUrl;
 
-impl Encoding for GetUrlJson {
-    const REQUEST_CONTENT_TYPE: &'static str = "application/x-www-form-urlencoded";
-    const RESPONSE_CONTENT_TYPE: &'static str = "application/json";
+impl Encoding for GetUrl {
+    const CONTENT_TYPE: &'static str = "application/x-www-form-urlencoded";
 }
+
+impl Encoding for PostUrl {
+    const CONTENT_TYPE: &'static str = "application/x-www-form-urlencoded";
+}
+
 #[async_trait]
-impl<T, RequestBody, ResponseBody>
-    Codec<
-        RequestBody,
-        ResponseBody,
-        http::Request<RequestBody>,
-        http::Response<ResponseBody>,
-        Body,
-        Body,
-        http::Request<Body>,
-        http::Response<Body>,
-        GetUrlJson,
-    > for T
+impl<T, Request> FromReq<Request, PostUrl> for T
+where
+    Request: Req + Send + 'static,
+    T: DeserializeOwned,
+{
+    async fn from_req(req: Request) -> Result<Self, ServerFnError> {
+        let string_data = req.try_into_string().await?;
+        let args = serde_json::from_str::<Self>(&string_data)
+            .map_err(|e| ServerFnError::Args(e.to_string()))?;
+        Ok(args)
+    }
+}
+
+#[async_trait]
+impl<T, Request> IntoReq<Request, PostUrl> for T
+where
+    Request: Req + ReqFromString,
+    T: Serialize + Send,
+{
+    async fn into_req(self) -> Result<Request, ServerFnError> {
+        let qs = serde_qs::to_string(&self)?;
+        Request::try_from_string("GET", GetUrl::CONTENT_TYPE, qs).await
+    }
+}
+
+/* #[async_trait]
+impl<T, Request, Response> Codec<Request, Response, GetUrlJson> for T
 where
     T: DeserializeOwned + Serialize + Send,
-    for<'a> RequestBody: HttpBody + Send + Sync + 'a,
-    <RequestBody as HttpBody>::Error: Display + Send + Sync,
-    <ResponseBody as HttpBody>::Error: Display + Send + Sync,
-    for<'a> ResponseBody: HttpBody + Send + Sync + 'a,
-    <ResponseBody as HttpBody>::Data: Send + Sync,
-    <RequestBody as HttpBody>::Data: Send + Sync,
+    Request: Req + Send,
+    Response: Res + Send,
 {
-    async fn from_req(req: http::Request<RequestBody>) -> Result<Self, ServerFnError> {
-        let (_parts, body) = req.into_parts();
-        let body_bytes = body
-            .collect()
-            .await
-            .map(|c| c.to_bytes())
-            .map_err(|e| ServerFnError::Deserialization(e.to_string()))?;
-        let string_data = String::from_utf8(body_bytes.to_vec())?;
+    async fn from_req(req: Request) -> Result<Self, ServerFnError> {
+        let string_data = req.try_into_string()?;
 
         let args = serde_json::from_str::<Self>(&string_data)
             .map_err(|e| ServerFnError::Args(e.to_string()))?;
         Ok(args)
     }
 
-    async fn into_req(self) -> Result<http::Request<Body>, ServerFnError> {
-        let qs = serde_qs::to_string(&self)?;
+    async fn into_req(self) -> Result<Request, ServerFnError> {
+        /* let qs = serde_qs::to_string(&self)?;
         let req = http::Request::builder()
             .method("GET")
             .header(
@@ -59,11 +70,13 @@ where
                 <GetUrlJson as Encoding>::REQUEST_CONTENT_TYPE,
             )
             .body(Body::from(qs))?;
-        Ok(req)
+        Ok(req) */
+        todo!()
     }
 
-    async fn from_res(res: http::Response<ResponseBody>) -> Result<Self, ServerFnError> {
-        let (_parts, body) = res.into_parts();
+    async fn from_res(res: Response) -> Result<Self, ServerFnError> {
+        todo!()
+        /* let (_parts, body) = res.into_parts();
 
         let body_bytes = body
             .collect()
@@ -72,10 +85,10 @@ where
             .map_err(|e| ServerFnError::Deserialization(e.to_string()))?;
         let string_data = String::from_utf8(body_bytes.to_vec())?;
         serde_json::from_str(&string_data)
-            .map_err(|e| ServerFnError::Deserialization(e.to_string()))
+            .map_err(|e| ServerFnError::Deserialization(e.to_string())) */
     }
 
-    async fn into_res(self) -> http::Response<Body> {
+    async fn into_res(self) -> Response {
         // Need to catch and err or here, or handle Errors at a higher level
         let data = match serde_json::to_string(&self) {
             Ok(d) => d,
@@ -93,3 +106,4 @@ where
         res
     }
 }
+ */
