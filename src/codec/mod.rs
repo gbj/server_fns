@@ -1,39 +1,32 @@
-/* #[cfg(feature = "cbor")]
+#[cfg(feature = "cbor")]
 pub mod cbor;
 #[cfg(feature = "json")]
 pub mod json;
 #[cfg(feature = "rkyv")]
-pub mod rkyv; */
-#[cfg(feature = "url_json")]
-pub mod url_json;
-use crate::{error::ServerFnError, request::Req, response::Res};
-use async_trait::async_trait;
-pub trait Encoding {
-    const CONTENT_TYPE: &'static str;
-}
+pub mod rkyv;
+#[cfg(feature = "url")]
+pub mod url;
+use crate::error::ServerFnError;
+use futures::Future;
 
-#[async_trait]
-pub trait FromReq<Request: Req, Encoding>
+pub trait FromReq<Request, Encoding>
 where
     Self: Sized,
 {
-    async fn from_req(req: Request) -> Result<Self, ServerFnError>;
+    fn from_req(req: Request) -> impl Future<Output = Result<Self, ServerFnError>> + Send;
 }
 
-#[async_trait]
-pub trait IntoReq<Request: Req, Encoding> {
-    async fn into_req(self) -> Result<Request, ServerFnError>;
+pub trait IntoReq<Request, Encoding> {
+    fn into_req(self) -> impl Future<Output = Result<Request, ServerFnError>> + Send;
 }
 
-#[async_trait]
-pub trait FromRes<Response: Res, Encoding>
+pub trait FromRes<Response, Encoding>
 where
     Self: Sized,
 {
-    async fn from_res(res: Response) -> Result<Self, ServerFnError>;
+    fn from_res(res: Response) -> impl Future<Output = Result<Self, ServerFnError>> + Send;
 }
 
-#[async_trait]
-pub trait IntoRes<Response: Res, Encoding> {
-    async fn into_res(self) -> Response;
+pub trait IntoRes<Response, Encoding> {
+    fn into_res(self) -> impl Future<Output = Result<Response, ServerFnError>> + Send;
 }

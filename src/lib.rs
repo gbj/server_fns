@@ -1,18 +1,21 @@
+#![feature(async_fn_in_trait)]
+#![feature(return_position_impl_trait_in_trait)]
+
 pub mod codec;
 pub mod error;
 pub mod request;
 pub mod response;
 
-use async_trait::async_trait;
 use codec::{FromReq, FromRes, IntoReq, IntoRes};
 use error::ServerFnError;
 use request::Req;
 use response::Res;
+use std::future::Future;
 
-#[async_trait]
 trait ServerFn
 where
-    Self: FromReq<Self::Request, Self::ArgumentEncoding>
+    Self: Send
+        + FromReq<Self::Request, Self::ArgumentEncoding>
         + IntoReq<Self::Client, Self::ArgumentEncoding>,
 {
     /// The type of the HTTP client that will send the request from the client side.
@@ -43,17 +46,28 @@ where
     // the body of the fn
     fn call_fn_server(self) -> Self::Output;
 
-    async fn respond_to_request(req: Self::Request) -> Result<Self::ServerResponse, ServerFnError> {
-        let this = Self::from_req(req).await?;
-        let output = this.call_fn_server();
-        let res = output.into_res().await;
-        Ok(res)
+    fn execute(
+        req: Self::Request,
+    ) -> impl Future<Output = Result<Self::ServerResponse, ServerFnError>> + Send {
+        async {
+            let this = Self::from_req(req).await?;
+            let output = this.call_fn_server();
+            let res = output.into_res().await?;
+            Ok(res)
+        }
+    }
+
+    fn respond(req: Self::Request) -> impl Future<Output = Self::ServerResponse> + Send {
+        async {
+            Self::execute(req)
+                .await
+                .unwrap_or_else(Self::ServerResponse::error_response)
+        }
     }
 
     async fn make_request(self) {}
 }
 
-#[async_trait]
 trait Client: Req {
     type Response: Res;
 

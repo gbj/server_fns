@@ -1,26 +1,52 @@
-use super::{Encoding, FromReq, FromRes, IntoReq, Req};
-use crate::error::{IntoErrorResponse, ServerFnError};
-use crate::request::ReqFromString;
-use crate::response::Res;
-use async_trait::async_trait;
-use axum::body::{Body, HttpBody};
-use http_body_util::BodyExt;
+use super::{FromReq, IntoReq};
+use crate::error::ServerFnError;
+use crate::request::{ClientReq, Req};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use std::fmt::Display;
-/// Pass arguments and receive responses as JSON in the body of a POST Request
+
+/// Pass arguments as a URL-encoded query string of a `GET` request.
 pub struct GetUrl;
+
+/// Pass arguments as the URL-encoded body of a `POST` request.
 pub struct PostUrl;
 
-impl Encoding for GetUrl {
-    const CONTENT_TYPE: &'static str = "application/x-www-form-urlencoded";
+const CONTENT_TYPE: &str = "application/x-www-form-urlencoded";
+
+impl<T, Request> IntoReq<Request, GetUrl> for T
+where
+    Request: Req + ClientReq,
+    T: Serialize + Send,
+{
+    async fn into_req(self) -> Result<Request, ServerFnError> {
+        let data = serde_qs::to_string(&self)?;
+        Request::try_from_string("GET", CONTENT_TYPE, "", data).await
+    }
 }
 
-impl Encoding for PostUrl {
-    const CONTENT_TYPE: &'static str = "application/x-www-form-urlencoded";
+impl<T, Request> FromReq<Request, GetUrl> for T
+where
+    Request: Req + Send + 'static,
+    T: DeserializeOwned,
+{
+    async fn from_req(req: Request) -> Result<Self, ServerFnError> {
+        let string_data = req.as_query().unwrap_or_default();
+        let args = serde_qs::from_str::<Self>(string_data)
+            .map_err(|e| ServerFnError::Args(e.to_string()))?;
+        Ok(args)
+    }
 }
 
-#[async_trait]
+impl<T, Request> IntoReq<Request, PostUrl> for T
+where
+    Request: Req + ClientReq,
+    T: Serialize + Send,
+{
+    async fn into_req(self) -> Result<Request, ServerFnError> {
+        let qs = serde_qs::to_string(&self)?;
+        Request::try_from_string("POST", CONTENT_TYPE, "", qs).await
+    }
+}
+
 impl<T, Request> FromReq<Request, PostUrl> for T
 where
     Request: Req + Send + 'static,
@@ -28,21 +54,9 @@ where
 {
     async fn from_req(req: Request) -> Result<Self, ServerFnError> {
         let string_data = req.try_into_string().await?;
-        let args = serde_json::from_str::<Self>(&string_data)
+        let args = serde_qs::from_str::<Self>(&string_data)
             .map_err(|e| ServerFnError::Args(e.to_string()))?;
         Ok(args)
-    }
-}
-
-#[async_trait]
-impl<T, Request> IntoReq<Request, PostUrl> for T
-where
-    Request: Req + ReqFromString,
-    T: Serialize + Send,
-{
-    async fn into_req(self) -> Result<Request, ServerFnError> {
-        let qs = serde_qs::to_string(&self)?;
-        Request::try_from_string("GET", GetUrl::CONTENT_TYPE, qs).await
     }
 }
 

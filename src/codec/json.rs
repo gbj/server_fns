@@ -1,98 +1,55 @@
-use std::fmt::Display;
-
-use super::{Codec, Encoding};
-use crate::error::{IntoErrorResponse, ServerFnError};
-use async_trait::async_trait;
-use axum::body::{Body, HttpBody};
-use http_body_util::BodyExt;
+use super::{FromReq, FromRes, IntoReq, IntoRes};
+use crate::error::ServerFnError;
+use crate::request::{ClientReq, Req};
+use crate::response::{ClientRes, Res};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-/// Pass arguments and receive responses as JSON in the body of a POST Request
-pub struct PostJson;
 
-impl Encoding for PostJson {
-    const REQUEST_CONTENT_TYPE: &'static str = "application/json";
-    const RESPONSE_CONTENT_TYPE: &'static str = "application/json";
-}
-#[async_trait]
-impl<T, RequestBody, ResponseBody>
-    Codec<
-        RequestBody,
-        ResponseBody,
-        http::Request<RequestBody>,
-        http::Response<ResponseBody>,
-        Body,
-        Body,
-        http::Request<Body>,
-        http::Response<Body>,
-        PostJson,
-    > for T
+/// Pass arguments and receive responses as JSON in the body of a `POST` request.
+pub struct SerdeJson;
+
+const CONTENT_TYPE: &str = "application/json";
+
+impl<T, Request> IntoReq<Request, SerdeJson> for T
 where
-    T: DeserializeOwned + Serialize + Send,
-    for<'a> RequestBody: HttpBody + Send + Sync + 'a,
-    <RequestBody as HttpBody>::Error: Display + Send + Sync,
-    <ResponseBody as HttpBody>::Error: Display + Send + Sync,
-    for<'a> ResponseBody: HttpBody + Send + Sync + 'a,
-    <ResponseBody as HttpBody>::Data: Send + Sync,
-    <RequestBody as HttpBody>::Data: Send + Sync,
+    Request: Req + ClientReq,
+    T: Serialize + Send,
 {
-    async fn from_req(req: http::Request<RequestBody>) -> Result<Self, ServerFnError> {
-        let (_parts, body) = req.into_parts();
-        let body_bytes = body
-            .collect()
-            .await
-            .map(|c| c.to_bytes())
-            .map_err(|e| ServerFnError::Deserialization(e.to_string()))?;
-        let string_data = String::from_utf8(body_bytes.to_vec())?;
-
-        let args = serde_json::from_str::<Self>(&string_data)
-            .map_err(|e| ServerFnError::Args(e.to_string()))?;
-        Ok(args)
+    async fn into_req(self) -> Result<Request, ServerFnError> {
+        let data = serde_json::to_string(&self)?;
+        Request::try_from_string("POST", CONTENT_TYPE, "", data).await
     }
+}
 
-    async fn into_req(self) -> Result<http::Request<Body>, ServerFnError> {
-        let args = serde_json::to_string(&self)?;
-        let req = http::Request::builder()
-            .method("GET")
-            .header(
-                http::header::CONTENT_TYPE,
-                <PostJson as Encoding>::REQUEST_CONTENT_TYPE,
-            )
-            .body(Body::from(args))?;
-        Ok(req)
+impl<T, Request> FromReq<Request, SerdeJson> for T
+where
+    Request: Req + Send + 'static,
+    T: DeserializeOwned,
+{
+    async fn from_req(req: Request) -> Result<Self, ServerFnError> {
+        let string_data = req.try_into_string().await?;
+        serde_json::from_str::<Self>(&string_data).map_err(|e| ServerFnError::Args(e.to_string()))
     }
+}
 
-    async fn from_res(res: http::Response<ResponseBody>) -> Result<Self, ServerFnError> {
-        let (_parts, body) = res.into_parts();
-
-        let body_bytes = body
-            .collect()
-            .await
-            .map(|c| c.to_bytes())
-            .map_err(|e| ServerFnError::Deserialization(e.to_string()))?;
-        let string_data = String::from_utf8(body_bytes.to_vec())?;
-        serde_json::from_str(&string_data)
-            .map_err(|e| ServerFnError::Deserialization(e.to_string()))
+impl<T, Response> IntoRes<Response, SerdeJson> for T
+where
+    Response: Res,
+    T: Serialize + Send,
+{
+    async fn into_res(self) -> Result<Response, ServerFnError> {
+        let data = serde_json::to_string(&self)?;
+        Response::try_from_string(CONTENT_TYPE, data)
     }
+}
 
-    async fn into_res(self) -> http::Response<Body> {
-        // Need to catch and err or here, or handle Errors at a higher level
-        let data = match serde_json::to_string(&self) {
-            Ok(d) => d,
-            Err(e) => return e.into_err_res(),
-        };
-        let builder = http::Response::builder();
-        let res = match builder
-            .status(200)
-            .header(
-                http::header::CONTENT_TYPE,
-                <PostJson as Encoding>::RESPONSE_CONTENT_TYPE,
-            )
-            .body(Body::from(data))
-        {
-            Ok(r) => r,
-            Err(e) => return e.into_err_res(),
-        };
-        res
+impl<T, Response> FromRes<Response, SerdeJson> for T
+where
+    Response: ClientRes + Send,
+    T: DeserializeOwned + Send,
+{
+    async fn from_res(res: Response) -> Result<Self, ServerFnError> {
+        let data = res.try_into_string()?;
+        serde_json::from_str(&data).map_err(|e| ServerFnError::Deserialization(e.to_string()))
     }
 }
