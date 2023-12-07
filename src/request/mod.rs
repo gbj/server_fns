@@ -17,7 +17,6 @@ pub trait ClientReq: Sized {
         body: String,
     ) -> impl Future<Output = Result<Self, ServerFnError>> + Send;
 
-
     fn try_from_bytes(
         method: &str,
         content_type: &str,
