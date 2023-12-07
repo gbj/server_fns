@@ -15,16 +15,22 @@
         pkgs = import nixpkgs {
           inherit system overlays;
         };
+        #rustTarget = pkgs.rust-bin.selectLatestNightlyWith (toolchain: toolchain.default.override{
+        #    extensions = [ "rust-analyzer" ];
+        #  });
+
+        rustTarget = pkgs.rust-bin.stable.latest.default.override {
+             extensions= [ "rust-src" "rust-analyzer" ];
+             targets = [ "x86_64-unknown-linux-gnu" ];
+        };
       in
       with pkgs;
       {
         devShells.default = mkShell {
           buildInputs = [
-            (rust-bin.stable.latest.default.override {
-              extensions= [ "rust-src" "rust-analyzer" ];
-              targets = [ "x86_64-unknown-linux-gnu" ];
-            })
+            rustTarget
           ];
+          RUST_SRC_PATH = "${rustTarget}/lib/rustlib/src/rust/library";
 
           shellHook = ''
             '';

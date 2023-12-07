@@ -19,7 +19,7 @@ where
     async fn into_req(self) -> Result<Request, ServerFnError> {
         let mut buffer: Vec<u8> = Vec::new();
         ciborium::ser::into_writer(&self, &mut buffer)?;
-        Request::try_from_bytes("POST", CONTENT_TYPE, "", buffer).await
+        Request::try_from_bytes("POST", CONTENT_TYPE, "", Bytes::from(buffer)).await
     }
 }
 
@@ -44,7 +44,7 @@ where
         let mut buffer: Vec<u8> = Vec::new();
         ciborium::ser::into_writer(&self, &mut buffer)
             .map_err(|e| ServerFnError::Serialization(e.to_string()))?;
-        Response::try_from_bytes(CONTENT_TYPE, buffer)
+        Response::try_from_bytes(CONTENT_TYPE, Bytes::from(buffer))
     }
 }
 

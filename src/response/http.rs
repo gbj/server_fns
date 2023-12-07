@@ -2,6 +2,7 @@ use crate::error::ServerFnError;
 
 use super::Res;
 use axum::body::Body;
+use bytes::Bytes;
 use http::Response;
 
 impl Res for Response<Body> {
@@ -14,7 +15,7 @@ impl Res for Response<Body> {
             .map_err(|e| ServerFnError::Response(e.to_string()))
     }
 
-    fn try_from_bytes(content_type: &str, data: Vec<u8>) -> Result<Self, ServerFnError> {
+    fn try_from_bytes(content_type: &str, data: Bytes) -> Result<Self, ServerFnError> {
         let builder = http::Response::builder();
         builder
             .status(200)

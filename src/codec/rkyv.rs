@@ -7,6 +7,7 @@ use super::{FromReq, FromRes, IntoReq, IntoRes};
 use crate::error::ServerFnError;
 use crate::request::{ClientReq, Req};
 use crate::response::{ClientRes, Res};
+use bytes::Bytes;
 
 /// Pass arguments and receive responses using `rkyv` in a `POST` request.
 pub struct Rkyv;
@@ -21,8 +22,9 @@ where
     T::Archived: for<'a> CheckBytes<DefaultValidator<'a>> + Deserialize<T, SharedDeserializeMap>,
 {
     async fn into_req(self) -> Result<Request, ServerFnError> {
-        let encoded = rkyv::to_bytes::<T, 1024>(&self)?.into_vec();
-        Request::try_from_bytes("POST", CONTENT_TYPE, "", encoded).await
+        let encoded = rkyv::to_bytes::<T, 1024>(&self)?;
+        let bytes = Bytes::copy_from_slice(encoded.as_ref());
+        Request::try_from_bytes("POST", CONTENT_TYPE, "", bytes).await
     }
 }
 
@@ -47,10 +49,10 @@ where
     T::Archived: for<'a> CheckBytes<DefaultValidator<'a>> + Deserialize<T, SharedDeserializeMap>,
 {
     async fn into_res(self) -> Result<Response, ServerFnError> {
-        let data = rkyv::to_bytes::<T, 1024>(&self)
-            .map_err(|e| ServerFnError::Serialization(e.to_string()))?
-            .into_vec();
-        Response::try_from_bytes(CONTENT_TYPE, data)
+        let encoded = rkyv::to_bytes::<T, 1024>(&self)
+            .map_err(|e| ServerFnError::Serialization(e.to_string()))?;
+        let bytes = Bytes::copy_from_slice(encoded.as_ref());
+        Response::try_from_bytes(CONTENT_TYPE, bytes)
     }
 }
 

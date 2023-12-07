@@ -9,7 +9,7 @@ impl Req for HttpRequest {
         self.uri().query()
     }
 
-    fn try_into_bytes(self) -> impl Future<Output = Result<Bytes, ServerFnError>> + Send + Sync {
+    fn try_into_bytes(self) -> impl Future<Output = Result<Bytes, ServerFnError>> + Send {
         // Actix is going to keep this on a single thread anyway so it's fine to wrap it
         // with SendWrapper, which makes it `Send` but will panic if it moves to another thread
         SendWrapper::new(async move {
