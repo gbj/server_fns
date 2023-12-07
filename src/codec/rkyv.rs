@@ -9,11 +9,11 @@ use crate::request::{ClientReq, Req};
 use crate::response::{ClientRes, Res};
 
 /// Pass arguments and receive responses using `rkyv` in a `POST` request.
-pub struct Cbor;
+pub struct Rkyv;
 
 const CONTENT_TYPE: &str = "application/rkyv";
 
-impl<T, Request> IntoReq<Request, Cbor> for T
+impl<T, Request> IntoReq<Request, Rkyv> for T
 where
     Request: Req + ClientReq,
     T: Serialize<AllocSerializer<1024>> + Send,
@@ -26,7 +26,7 @@ where
     }
 }
 
-impl<T, Request> FromReq<Request, Cbor> for T
+impl<T, Request> FromReq<Request, Rkyv> for T
 where
     Request: Req + Send + 'static,
     T: Serialize<AllocSerializer<1024>> + Send,
@@ -39,7 +39,7 @@ where
     }
 }
 
-impl<T, Response> IntoRes<Response, Cbor> for T
+impl<T, Response> IntoRes<Response, Rkyv> for T
 where
     Response: Res,
     T: Serialize<AllocSerializer<1024>> + Send,
@@ -54,7 +54,7 @@ where
     }
 }
 
-impl<T, Response> FromRes<Response, Cbor> for T
+impl<T, Response> FromRes<Response, Rkyv> for T
 where
     Response: ClientRes + Send,
     T: Serialize<AllocSerializer<1024>> + Send,
