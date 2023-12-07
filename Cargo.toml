@@ -33,7 +33,7 @@ rkyv = { version = "0.7", features = [
 send_wrapper = { version = "0.6", features = ["futures"], optional = true }
 
 [features]
-actix = ["dep:actix-web", "dep:send_wrapper", "dep:http"]
+actix = ["dep:actix-web", "dep:send_wrapper"]
 axum = ["dep:axum", "dep:http", "dep:hyper", "dep:http-body-util"]
 json = ["dep:serde_json"]
 url = ["dep:serde_qs"]
