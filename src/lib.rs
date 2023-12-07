@@ -1,67 +1,75 @@
+#![feature(async_fn_in_trait)]
+#![feature(return_position_impl_trait_in_trait)]
+
 pub mod codec;
 pub mod error;
 pub mod request;
 pub mod response;
 
-use crate::codec::{Codec, Encoding};
-use async_trait::async_trait;
+use codec::{FromReq, FromRes, IntoReq, IntoRes};
 use error::ServerFnError;
 use request::Req;
 use response::Res;
+use std::future::Future;
 
-#[async_trait]
-trait ServerFn<
-    RequestBody,
-    ResponseBody,
-    Request,
-    Response,
-    IntoRequestBody,
-    IntoResponseBody,
-    IntoRequest,
-    IntoResponse,
-> where
-    Request: Req<RequestBody> + Send + 'static,
-    Response: Res<ResponseBody> + Send + 'static,
-    RequestBody: Send + Sync,
-    ResponseBody: Send + Sync,
-    IntoRequestBody: Send + Sync,
-    IntoResponseBody: Send + Sync,
-    IntoRequest: Req<IntoRequestBody> + Send + Sync,
-    IntoResponse: Res<IntoResponseBody> + Send + Sync,
-    Self: Codec<
-        RequestBody,
-        ResponseBody,
-        Request,
-        Response,
-        IntoRequestBody,
-        IntoResponseBody,
-        IntoRequest,
-        IntoResponse,
-        Self::Encoding,
-    >,
+trait ServerFn
+where
+    Self: Send
+        + FromReq<Self::Request, Self::ArgumentEncoding>
+        + IntoReq<Self::Client, Self::ArgumentEncoding>,
 {
-    type Request;
-    type Response;
-    type Encoding: Encoding;
-    type Output: Codec<
-        RequestBody,
-        ResponseBody,
-        Request,
-        Response,
-        IntoRequestBody,
-        IntoResponseBody,
-        IntoRequest,
-        IntoResponse,
-        Self::Encoding,
-    >;
+    /// The type of the HTTP client that will send the request from the client side.
+    ///
+    /// For example, this might be `gloo-net` in the browser, or `reqwest` for a desktop app.
+    type Client: Client;
+
+    /// The type of the HTTP request when received by the server function on the server side.
+    type Request: Req + Send;
+
+    /// The type of the HTTP response returned by the server function on the server side.
+    type ServerResponse: Res + Send;
+
+    /// The type of the HTTP response as received by the server function on the client side.
+    type ClientResponse: Res;
+
+    /// The return type of the server function.
+    ///
+    /// This needs to be converted into `ServerResponse` on the server side, and converted
+    /// *from* `ClientResponse` when received by the client.
+    type Output: IntoRes<Self::ServerResponse, Self::OutputEncoding>
+        + FromRes<Self::ClientResponse, Self::OutputEncoding>
+        + Send;
+
+    type ArgumentEncoding;
+    type OutputEncoding;
 
     // the body of the fn
     fn call_fn_server(self) -> Self::Output;
 
-    async fn respond_to_request(req: Request) -> Result<IntoResponse, ServerFnError> {
-        let this = Self::from_req(req).await?;
-        let output = this.call_fn_server();
-        let res = output.into_res().await;
-        Ok(res)
+    fn execute(
+        req: Self::Request,
+    ) -> impl Future<Output = Result<Self::ServerResponse, ServerFnError>> + Send {
+        async {
+            let this = Self::from_req(req).await?;
+            let output = this.call_fn_server();
+            let res = output.into_res().await?;
+            Ok(res)
+        }
     }
+
+    fn respond(req: Self::Request) -> impl Future<Output = Self::ServerResponse> + Send {
+        async {
+            Self::execute(req)
+                .await
+                .unwrap_or_else(Self::ServerResponse::error_response)
+        }
+    }
+
+    async fn make_request(self) {}
+}
+
+trait Client: Req {
+    type Response: Res;
+
+    async fn send(self) -> Self::Response;
 }

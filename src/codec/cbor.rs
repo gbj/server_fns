@@ -1,4 +1,66 @@
-use std::fmt::Display;
+use super::{FromReq, FromRes, IntoReq, IntoRes};
+use crate::error::ServerFnError;
+use crate::request::{ClientReq, Req};
+use crate::response::{ClientRes, Res};
+use bytes::Bytes;
+use serde::de::DeserializeOwned;
+use serde::Serialize;
+
+/// Pass arguments and receive responses using `cbor` in a `POST` request.
+pub struct Cbor;
+
+const CONTENT_TYPE: &str = "application/cbor";
+
+impl<T, Request> IntoReq<Request, Cbor> for T
+where
+    Request: Req + ClientReq,
+    T: Serialize + Send,
+{
+    async fn into_req(self) -> Result<Request, ServerFnError> {
+        let mut buffer: Vec<u8> = Vec::new();
+        ciborium::ser::into_writer(&self, &mut buffer)?;
+        Request::try_from_bytes("POST", CONTENT_TYPE, "", buffer).await
+    }
+}
+
+impl<T, Request> FromReq<Request, Cbor> for T
+where
+    Request: Req + Send + 'static,
+    T: DeserializeOwned,
+{
+    async fn from_req(req: Request) -> Result<Self, ServerFnError> {
+        let body_bytes = req.try_into_bytes().await?;
+        ciborium::de::from_reader(body_bytes.as_ref())
+            .map_err(|e| ServerFnError::Args(e.to_string()))
+    }
+}
+
+impl<T, Response> IntoRes<Response, Cbor> for T
+where
+    Response: Res,
+    T: Serialize + Send,
+{
+    async fn into_res(self) -> Result<Response, ServerFnError> {
+        let mut buffer: Vec<u8> = Vec::new();
+        ciborium::ser::into_writer(&self, &mut buffer)
+            .map_err(|e| ServerFnError::Serialization(e.to_string()))?;
+        Response::try_from_bytes(CONTENT_TYPE, buffer)
+    }
+}
+
+impl<T, Response> FromRes<Response, Cbor> for T
+where
+    Response: ClientRes + Send,
+    T: DeserializeOwned + Send,
+{
+    async fn from_res(res: Response) -> Result<Self, ServerFnError> {
+        let data = res.try_into_bytes()?;
+        let data = Bytes::from(data);
+        ciborium::de::from_reader(data.as_ref()).map_err(|e| ServerFnError::Args(e.to_string()))
+    }
+}
+
+/* use std::fmt::Display;
 
 use super::{Codec, Encoding};
 use crate::error::{ServerFnError, IntoErrorResponse};
@@ -93,3 +155,4 @@ where
         res
     }
 }
+ */
