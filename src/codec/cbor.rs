@@ -15,7 +15,7 @@ impl Encoding for Cbor {
 
 impl<T, Request> IntoReq<Request, Cbor> for T
 where
-    Request: Req + ClientReq,
+    Request: ClientReq,
     T: Serialize + Send,
 {
     fn into_req(self, path: &str) -> Result<Request, ServerFnError> {
@@ -27,7 +27,7 @@ where
 
 impl<T, Request> FromReq<Request, Cbor> for T
 where
-    Request: Req + Send + Sync + 'static,
+    Request: Req + Send + 'static,
     T: DeserializeOwned,
 {
     async fn from_req(req: Request) -> Result<Self, ServerFnError> {
@@ -40,7 +40,7 @@ where
 impl<T, Response> IntoRes<Response, Cbor> for T
 where
     Response: Res,
-    T: Serialize + Send + Sync,
+    T: Serialize + Send,
 {
     async fn into_res(self) -> Result<Response, ServerFnError> {
         let mut buffer: Vec<u8> = Vec::new();
@@ -52,8 +52,8 @@ where
 
 impl<T, Response> FromRes<Response, Cbor> for T
 where
-    Response: ClientRes + Send + Sync,
-    T: DeserializeOwned + Send + Sync,
+    Response: ClientRes + Send,
+    T: DeserializeOwned + Send,
 {
     async fn from_res(res: Response) -> Result<Self, ServerFnError> {
         let data = res.try_into_bytes().await?;
@@ -93,12 +93,12 @@ impl<T, RequestBody, ResponseBody>
     > for T
 where
     T: DeserializeOwned + Serialize + Send,
-    for<'a> RequestBody: HttpBody + Send + Sync + 'a,
-    <RequestBody as HttpBody>::Error: Display + Send + Sync,
-    <ResponseBody as HttpBody>::Error: Display + Send + Sync,
-    for<'a> ResponseBody: HttpBody + Send + Sync + 'a,
-    <ResponseBody as HttpBody>::Data: Send + Sync,
-    <RequestBody as HttpBody>::Data: Send + Sync,
+    for<'a> RequestBody: HttpBody + Send  + 'a,
+    <RequestBody as HttpBody>::Error: Display + Send ,
+    <ResponseBody as HttpBody>::Error: Display + Send ,
+    for<'a> ResponseBody: HttpBody + Send  + 'a,
+    <ResponseBody as HttpBody>::Data: Send ,
+    <RequestBody as HttpBody>::Data: Send ,
 {
     async fn from_req(req: http::Request<RequestBody>) -> Result<Self, ServerFnError> {
         let (_parts, body) = req.into_parts();

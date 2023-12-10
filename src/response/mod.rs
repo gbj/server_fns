@@ -23,8 +23,8 @@ pub trait Res: Sized {
 /// Represents the response as received by the client.
 pub trait ClientRes {
     /// Attempts to extract a UTF-8 string from an HTTP response.
-    fn try_into_string(self) -> impl Future<Output = Result<String, ServerFnError>> + Send + Sync;
+    fn try_into_string(self) -> impl Future<Output = Result<String, ServerFnError>> + Send;
 
     /// Attempts to extract a binary blob from an HTTP response.
-    fn try_into_bytes(self) -> impl Future<Output = Result<Bytes, ServerFnError>> + Send + Sync;
+    fn try_into_bytes(self) -> impl Future<Output = Result<Bytes, ServerFnError>> + Send;
 }

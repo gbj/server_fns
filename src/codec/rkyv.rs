@@ -18,7 +18,7 @@ impl Encoding for Rkyv {
 
 impl<T, Request> IntoReq<Request, Rkyv> for T
 where
-    Request: Req + ClientReq,
+    Request: ClientReq,
     T: Serialize<AllocSerializer<1024>> + Send,
     T: Archive,
     T::Archived: for<'a> CheckBytes<DefaultValidator<'a>> + Deserialize<T, SharedDeserializeMap>,
@@ -32,8 +32,8 @@ where
 
 impl<T, Request> FromReq<Request, Rkyv> for T
 where
-    Request: Req + Send + Sync + 'static,
-    T: Serialize<AllocSerializer<1024>> + Send + Sync,
+    Request: Req + Send + 'static,
+    T: Serialize<AllocSerializer<1024>> + Send,
     T: Archive,
     T::Archived: for<'a> CheckBytes<DefaultValidator<'a>> + Deserialize<T, SharedDeserializeMap>,
 {
@@ -46,7 +46,7 @@ where
 impl<T, Response> IntoRes<Response, Rkyv> for T
 where
     Response: Res,
-    T: Serialize<AllocSerializer<1024>> + Send + Sync,
+    T: Serialize<AllocSerializer<1024>> + Send,
     T: Archive,
     T::Archived: for<'a> CheckBytes<DefaultValidator<'a>> + Deserialize<T, SharedDeserializeMap>,
 {
@@ -60,8 +60,8 @@ where
 
 impl<T, Response> FromRes<Response, Rkyv> for T
 where
-    Response: ClientRes + Send + Sync,
-    T: Serialize<AllocSerializer<1024>> + Send + Sync,
+    Response: ClientRes + Send,
+    T: Serialize<AllocSerializer<1024>> + Send,
     T: Archive,
     T::Archived: for<'a> CheckBytes<DefaultValidator<'a>> + Deserialize<T, SharedDeserializeMap>,
 {

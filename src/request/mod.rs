@@ -29,8 +29,8 @@ pub trait Req: Sized {
     fn as_query(&self) -> Option<&str>;
 
     /// Attempts to extract the body of the request into [`Bytes`].
-    fn try_into_bytes(self) -> impl Future<Output = Result<Bytes, ServerFnError>> + Send + Sync;
+    fn try_into_bytes(self) -> impl Future<Output = Result<Bytes, ServerFnError>> + Send;
 
     /// Attempts to convert the body of the request into a string.
-    fn try_into_string(self) -> impl Future<Output = Result<String, ServerFnError>> + Send + Sync;
+    fn try_into_string(self) -> impl Future<Output = Result<String, ServerFnError>> + Send;
 }

@@ -17,7 +17,6 @@ use std::future::Future;
 pub trait ServerFn
 where
     Self: Send
-        + Sync
         + FromReq<Self::ServerRequest, Self::InputEncoding>
         + IntoReq<<Self::Client as Client>::Request, Self::InputEncoding>,
 {
@@ -29,10 +28,10 @@ where
     type Client: Client;
 
     /// The type of the HTTP request when received by the server function on the server side.
-    type ServerRequest: Req + Send + Sync;
+    type ServerRequest: Req + Send;
 
     /// The type of the HTTP response returned by the server function on the server side.
-    type ServerResponse: Res + Send + Sync;
+    type ServerResponse: Res + Send;
 
     /// The return type of the server function.
     ///
@@ -40,8 +39,7 @@ where
     /// *from* `ClientResponse` when received by the client.
     type Output: IntoRes<Self::ServerResponse, Self::OutputEncoding>
         + FromRes<<Self::Client as Client>::Response, Self::OutputEncoding>
-        + Send
-        + Sync;
+        + Send;
 
     type InputEncoding: Encoding;
     type OutputEncoding: Encoding;
@@ -51,7 +49,7 @@ where
 
     fn run_on_server(
         req: Self::ServerRequest,
-    ) -> impl Future<Output = Self::ServerResponse> + Send + Sync {
+    ) -> impl Future<Output = Self::ServerResponse> + Send {
         async {
             Self::execute_on_server(req)
                 .await
@@ -59,9 +57,7 @@ where
         }
     }
 
-    fn run_on_client(
-        self,
-    ) -> impl Future<Output = Result<Self::Output, ServerFnError>> + Send + Sync {
+    fn run_on_client(self) -> impl Future<Output = Result<Self::Output, ServerFnError>> + Send {
         async move {
             let req = self.into_req(Self::PATH)?;
             let res = Self::Client::send(req).await?;
@@ -73,7 +69,7 @@ where
     #[doc(hidden)]
     fn execute_on_server(
         req: Self::ServerRequest,
-    ) -> impl Future<Output = Result<Self::ServerResponse, ServerFnError>> + Send + Sync {
+    ) -> impl Future<Output = Result<Self::ServerResponse, ServerFnError>> + Send {
         async {
             let this = Self::from_req(req).await?;
             let output = this.run_body();

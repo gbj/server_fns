@@ -9,7 +9,7 @@ use std::future::Future;
 pub struct BrowserResponse(pub(crate) SendWrapper<Response>);
 
 impl ClientRes for BrowserResponse {
-    fn try_into_string(self) -> impl Future<Output = Result<String, ServerFnError>> + Send + Sync {
+    fn try_into_string(self) -> impl Future<Output = Result<String, ServerFnError>> + Send {
         // the browser won't send this async work between threads (because it's single-threaded)
         // so we can safely wrap this
         SendWrapper::new(async move {
@@ -20,7 +20,7 @@ impl ClientRes for BrowserResponse {
         })
     }
 
-    fn try_into_bytes(self) -> impl Future<Output = Result<Bytes, ServerFnError>> + Send + Sync {
+    fn try_into_bytes(self) -> impl Future<Output = Result<Bytes, ServerFnError>> + Send {
         // the browser won't send this async work between threads (because it's single-threaded)
         // so we can safely wrap this
         SendWrapper::new(async move {

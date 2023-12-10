@@ -14,7 +14,7 @@ impl super::Encoding for SerdeJson {
 
 impl<T, Request> IntoReq<Request, SerdeJson> for T
 where
-    Request: Req + ClientReq,
+    Request: ClientReq,
     T: Serialize + Send,
 {
     fn into_req(self, path: &str) -> Result<Request, ServerFnError> {
@@ -25,7 +25,7 @@ where
 
 impl<T, Request> FromReq<Request, SerdeJson> for T
 where
-    Request: Req + Send + Sync + 'static,
+    Request: Req + Send + 'static,
     T: DeserializeOwned,
 {
     async fn from_req(req: Request) -> Result<Self, ServerFnError> {
@@ -37,7 +37,7 @@ where
 impl<T, Response> IntoRes<Response, SerdeJson> for T
 where
     Response: Res,
-    T: Serialize + Send + Sync,
+    T: Serialize + Send,
 {
     async fn into_res(self) -> Result<Response, ServerFnError> {
         let data = serde_json::to_string(&self)?;
@@ -47,8 +47,8 @@ where
 
 impl<T, Response> FromRes<Response, SerdeJson> for T
 where
-    Response: ClientRes + Send + Sync,
-    T: DeserializeOwned + Send + Sync,
+    Response: ClientRes + Send,
+    T: DeserializeOwned + Send,
 {
     async fn from_res(res: Response) -> Result<Self, ServerFnError> {
         let data = res.try_into_string().await?;

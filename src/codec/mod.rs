@@ -13,7 +13,7 @@ pub trait FromReq<Request, Encoding>
 where
     Self: Sized,
 {
-    fn from_req(req: Request) -> impl Future<Output = Result<Self, ServerFnError>> + Send + Sync;
+    fn from_req(req: Request) -> impl Future<Output = Result<Self, ServerFnError>> + Send;
 }
 
 pub trait IntoReq<Request, Encoding> {
@@ -24,11 +24,11 @@ pub trait FromRes<Response, Encoding>
 where
     Self: Sized,
 {
-    fn from_res(res: Response) -> impl Future<Output = Result<Self, ServerFnError>> + Send + Sync;
+    fn from_res(res: Response) -> impl Future<Output = Result<Self, ServerFnError>> + Send;
 }
 
 pub trait IntoRes<Response, Encoding> {
-    fn into_res(self) -> impl Future<Output = Result<Response, ServerFnError>> + Send + Sync;
+    fn into_res(self) -> impl Future<Output = Result<Response, ServerFnError>> + Send;
 }
 
 pub trait Encoding {

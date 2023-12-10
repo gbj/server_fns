@@ -16,7 +16,7 @@ impl Encoding for GetUrl {
 
 impl<T, Request> IntoReq<Request, GetUrl> for T
 where
-    Request: Req + ClientReq,
+    Request: ClientReq,
     T: Serialize + Send,
 {
     fn into_req(self, path: &str) -> Result<Request, ServerFnError> {
@@ -27,7 +27,7 @@ where
 
 impl<T, Request> FromReq<Request, GetUrl> for T
 where
-    Request: Req + Send + Sync + 'static,
+    Request: Req + Send + 'static,
     T: DeserializeOwned,
 {
     async fn from_req(req: Request) -> Result<Self, ServerFnError> {
@@ -44,7 +44,7 @@ impl Encoding for PostUrl {
 
 impl<T, Request> IntoReq<Request, PostUrl> for T
 where
-    Request: Req + ClientReq,
+    Request: ClientReq,
     T: Serialize + Send,
 {
     fn into_req(self, path: &str) -> Result<Request, ServerFnError> {
@@ -55,7 +55,7 @@ where
 
 impl<T, Request> FromReq<Request, PostUrl> for T
 where
-    Request: Req + Send + Sync + 'static,
+    Request: Req + Send + 'static,
     T: DeserializeOwned,
 {
     async fn from_req(req: Request) -> Result<Self, ServerFnError> {

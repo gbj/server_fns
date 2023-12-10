@@ -7,9 +7,9 @@ use http_body_util::BodyExt;
 
 impl<B> Req for Request<B>
 where
-    B: HttpBody + Send + Sync,
+    B: HttpBody + Send,
     B::Error: Display,
-    B::Data: Send + Sync,
+    B::Data: Send,
 {
     fn as_query(&self) -> Option<&str> {
         self.uri().query()

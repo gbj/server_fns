@@ -15,17 +15,17 @@ pub type Result<T, E = Error> = core::result::Result<T, E>;
 /// A generic wrapper for any error.
 #[derive(Debug, Clone)]
 #[repr(transparent)]
-pub struct Error(Arc<dyn error::Error + Send + Sync>);
+pub struct Error(Arc<dyn error::Error + Send>);
 
 impl Error {
     /// Converts the wrapper into the inner reference-counted error.
-    pub fn into_inner(self) -> Arc<dyn error::Error + Send + Sync> {
+    pub fn into_inner(self) -> Arc<dyn error::Error + Send> {
         Arc::clone(&self.0)
     }
 }
 
 impl ops::Deref for Error {
-    type Target = Arc<dyn error::Error + Send + Sync>;
+    type Target = Arc<dyn error::Error + Send>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -40,7 +40,7 @@ impl fmt::Display for Error {
 
 impl<T> From<T> for Error
 where
-    T: std::error::Error + Send + Sync + 'static,
+    T: std::error::Error + Send + 'static,
 {
     fn from(value: T) -> Self {
         Error(Arc::new(value))
