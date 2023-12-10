@@ -20,6 +20,7 @@ async fn main() {
             "/api/:name",
             get(|req: Request<Body>| async move {
                 let path = req.uri().path();
+                // this is probably better done once by building a HashMap
                 if let Some(server_fn) = inventory::iter::<AxumServerFnTraitObj>
                     .into_iter()
                     .find(|obj| obj.path == path)
