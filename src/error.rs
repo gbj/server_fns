@@ -1,11 +1,48 @@
+use core::fmt;
+use std::{error, ops, sync::Arc};
+
 use serde::{Deserialize, Serialize};
-use std::{
-    error,
-    fmt::{self},
-    ops,
-    sync::Arc,
-};
 use thiserror::Error;
+
+//#[derive(Error, Debug, Clone, Serialize, Deserialize)]
+//pub enum ServerFnError {
+//    /// Error while trying to register the server function (only occurs in case of poisoned RwLock).
+//    #[error("error while trying to register the server function: {0}")]
+//    Registration(String),
+//    /// Occurs on the client if there is a network error while trying to run function on server.
+//    #[error("error reaching server to call server function: {0}")]
+//    Request(String),
+//    /// Occurs on the server if there is an error creating an HTTP response.
+//    #[error("error generating HTTP response: {0}")]
+//    Response(String),
+//    /// Occurs when there is an error while actually running the function on the server.
+//    #[error("error running server function: {0}")]
+//    ServerError(String),
+//    /// Occurs on the client if there is an error deserializing the server's response.
+//    #[error("error deserializing server function results: {0}")]
+//    Deserialization(String),
+//    /// Occurs on the client if there is an error serializing the server function arguments.
+//    #[error("error serializing server function arguments: {0}")]
+//    Serialization(String),
+//    /// Occurs on the server if there is an error deserializing one of the arguments that's been sent.
+//    #[error("error deserializing server function arguments: {0}")]
+//    Args(String),
+//    /// Occurs on the server if there's a missing argument.
+//    #[error("missing argument {0}")]
+//    MissingArg(String),
+//    // An optional user-provided error that can be returned from server functions
+//    //#[error("{0}")]
+//    //AppError(Option<dyn std::error::Error>),
+//}
+//
+//impl<E> From<E> for ServerFnError
+//where
+//    E: std::error::Error,
+//{
+//    fn from(e: E) -> Self {
+//        ServerFnError::ServerError(e.to_string())
+//    }
+//}
 /// This is a result type into which any error can be converted,
 /// and which can be used directly in your `view`.
 ///

@@ -16,7 +16,7 @@
           inherit system overlays;
         };
         rustTarget = pkgs.rust-bin.selectLatestNightlyWith (toolchain: toolchain.default.override{
-            extensions = [ "rust-analyzer" ];
+            extensions = [ "rust-src" "rust-analyzer" ];
           });
 
        # rustTarget = pkgs.rust-bin.stable.latest.default.override {
