@@ -55,7 +55,6 @@ where
 {
     async fn from_res(res: Response) -> Result<Self, ServerFnError> {
         let data = res.try_into_bytes()?;
-        let data = Bytes::from(data);
         ciborium::de::from_reader(data.as_ref()).map_err(|e| ServerFnError::Args(e.to_string()))
     }
 }
