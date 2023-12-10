@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 axum = "0.7.2"
 gloo-net = "0.5.0"
+inventory = "0.3.13"
 serde = { version = "1.0.193", features = ["derive"] }
 server_fns = { version = "0.1.0", path = "../..", features = [
 	"axum",

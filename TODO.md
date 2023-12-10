@@ -1,0 +1,6 @@
+- [ ] allow custom error types
+- [ ] reqwest client (for desktop/native apps)
+- [ ] `inventory`/trait object for automatic registration
+- [ ] macro implementation
+- [ ] is this compatible with adding middle per server fn?
+- [ ] modifying Response (maybe framework-specific?)

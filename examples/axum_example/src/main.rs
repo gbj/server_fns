@@ -1,3 +1,5 @@
+use std::{collections::HashMap, future::Future, pin::Pin};
+
 use axum::{
     body::Body,
     http::{Request, Response},
@@ -15,14 +17,31 @@ async fn main() {
     let app = Router::new()
         .route("/", get(|| async { "Hello, World!" }))
         .route(
-            "/api/my_server_fn123",
-            get(|req: Request<Body>| async { MyServerFn::run_on_server(req).await }),
+            "/api/:name",
+            get(|req: Request<Body>| async move {
+                let path = req.uri().path();
+                if let Some(server_fn) = inventory::iter::<AxumServerFnTraitObj>
+                    .into_iter()
+                    .find(|obj| obj.path == path)
+                {
+                    (server_fn.handler)(req).await
+                } else {
+                    todo!("handle 'server fn not found'")
+                }
+            }),
         );
 
     // run our app with hyper, listening globally on port 3000
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }
+
+pub struct AxumServerFnTraitObj {
+    path: &'static str,
+    handler: fn(Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> + Send>>,
+}
+
+inventory::collect!(AxumServerFnTraitObj);
 
 #[derive(Deserialize, Serialize)]
 struct MyServerFn {
@@ -43,5 +62,12 @@ impl ServerFn for MyServerFn {
     fn run_body(self) -> Self::Output {
         let MyServerFn { foo, bar } = self;
         foo.len() as f32 + bar
+    }
+}
+
+inventory::submit! {
+    AxumServerFnTraitObj {
+        path: MyServerFn::PATH,
+        handler: |req| Box::pin(MyServerFn::run_on_server(req))
     }
 }
