@@ -3,7 +3,7 @@ use rkyv::{
     validation::validators::DefaultValidator, Archive, CheckBytes, Deserialize, Serialize,
 };
 
-use super::{FromReq, FromRes, IntoReq, IntoRes};
+use super::{Encoding, FromReq, FromRes, IntoReq, IntoRes};
 use crate::error::ServerFnError;
 use crate::request::{ClientReq, Req};
 use crate::response::{ClientRes, Res};
@@ -12,7 +12,9 @@ use bytes::Bytes;
 /// Pass arguments and receive responses using `rkyv` in a `POST` request.
 pub struct Rkyv;
 
-const CONTENT_TYPE: &str = "application/rkyv";
+impl Encoding for Rkyv {
+    const CONTENT_TYPE: &'static str = "application/rkyv";
+}
 
 impl<T, Request> IntoReq<Request, Rkyv> for T
 where
@@ -21,17 +23,17 @@ where
     T: Archive,
     T::Archived: for<'a> CheckBytes<DefaultValidator<'a>> + Deserialize<T, SharedDeserializeMap>,
 {
-    async fn into_req(self) -> Result<Request, ServerFnError> {
+    fn into_req(self, path: &str) -> Result<Request, ServerFnError> {
         let encoded = rkyv::to_bytes::<T, 1024>(&self)?;
         let bytes = Bytes::copy_from_slice(encoded.as_ref());
-        Request::try_from_bytes("POST", CONTENT_TYPE, "", bytes).await
+        Request::try_new_post_bytes(path, Rkyv::CONTENT_TYPE, bytes)
     }
 }
 
 impl<T, Request> FromReq<Request, Rkyv> for T
 where
-    Request: Req + Send + 'static,
-    T: Serialize<AllocSerializer<1024>> + Send,
+    Request: Req + Send + Sync + 'static,
+    T: Serialize<AllocSerializer<1024>> + Send + Sync,
     T: Archive,
     T::Archived: for<'a> CheckBytes<DefaultValidator<'a>> + Deserialize<T, SharedDeserializeMap>,
 {
@@ -44,7 +46,7 @@ where
 impl<T, Response> IntoRes<Response, Rkyv> for T
 where
     Response: Res,
-    T: Serialize<AllocSerializer<1024>> + Send,
+    T: Serialize<AllocSerializer<1024>> + Send + Sync,
     T: Archive,
     T::Archived: for<'a> CheckBytes<DefaultValidator<'a>> + Deserialize<T, SharedDeserializeMap>,
 {
@@ -52,19 +54,19 @@ where
         let encoded = rkyv::to_bytes::<T, 1024>(&self)
             .map_err(|e| ServerFnError::Serialization(e.to_string()))?;
         let bytes = Bytes::copy_from_slice(encoded.as_ref());
-        Response::try_from_bytes(CONTENT_TYPE, bytes)
+        Response::try_from_bytes(Rkyv::CONTENT_TYPE, bytes)
     }
 }
 
 impl<T, Response> FromRes<Response, Rkyv> for T
 where
-    Response: ClientRes + Send,
-    T: Serialize<AllocSerializer<1024>> + Send,
+    Response: ClientRes + Send + Sync,
+    T: Serialize<AllocSerializer<1024>> + Send + Sync,
     T: Archive,
     T::Archived: for<'a> CheckBytes<DefaultValidator<'a>> + Deserialize<T, SharedDeserializeMap>,
 {
     async fn from_res(res: Response) -> Result<Self, ServerFnError> {
-        let data = res.try_into_bytes()?;
+        let data = res.try_into_bytes().await?;
         rkyv::from_bytes::<T>(&data).map_err(|e| ServerFnError::Deserialization(e.to_string()))
     }
 }

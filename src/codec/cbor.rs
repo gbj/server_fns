@@ -1,4 +1,4 @@
-use super::{FromReq, FromRes, IntoReq, IntoRes};
+use super::{Encoding, FromReq, FromRes, IntoReq, IntoRes};
 use crate::error::ServerFnError;
 use crate::request::{ClientReq, Req};
 use crate::response::{ClientRes, Res};
@@ -9,23 +9,25 @@ use serde::Serialize;
 /// Pass arguments and receive responses using `cbor` in a `POST` request.
 pub struct Cbor;
 
-const CONTENT_TYPE: &str = "application/cbor";
+impl Encoding for Cbor {
+    const CONTENT_TYPE: &'static str = "application/cbor";
+}
 
 impl<T, Request> IntoReq<Request, Cbor> for T
 where
     Request: Req + ClientReq,
     T: Serialize + Send,
 {
-    async fn into_req(self) -> Result<Request, ServerFnError> {
+    fn into_req(self, path: &str) -> Result<Request, ServerFnError> {
         let mut buffer: Vec<u8> = Vec::new();
         ciborium::ser::into_writer(&self, &mut buffer)?;
-        Request::try_from_bytes("POST", CONTENT_TYPE, "", Bytes::from(buffer)).await
+        Request::try_new_post_bytes(path, Cbor::CONTENT_TYPE, Bytes::from(buffer))
     }
 }
 
 impl<T, Request> FromReq<Request, Cbor> for T
 where
-    Request: Req + Send + 'static,
+    Request: Req + Send + Sync + 'static,
     T: DeserializeOwned,
 {
     async fn from_req(req: Request) -> Result<Self, ServerFnError> {
@@ -38,23 +40,23 @@ where
 impl<T, Response> IntoRes<Response, Cbor> for T
 where
     Response: Res,
-    T: Serialize + Send,
+    T: Serialize + Send + Sync,
 {
     async fn into_res(self) -> Result<Response, ServerFnError> {
         let mut buffer: Vec<u8> = Vec::new();
         ciborium::ser::into_writer(&self, &mut buffer)
             .map_err(|e| ServerFnError::Serialization(e.to_string()))?;
-        Response::try_from_bytes(CONTENT_TYPE, Bytes::from(buffer))
+        Response::try_from_bytes(Cbor::CONTENT_TYPE, Bytes::from(buffer))
     }
 }
 
 impl<T, Response> FromRes<Response, Cbor> for T
 where
-    Response: ClientRes + Send,
-    T: DeserializeOwned + Send,
+    Response: ClientRes + Send + Sync,
+    T: DeserializeOwned + Send + Sync,
 {
     async fn from_res(res: Response) -> Result<Self, ServerFnError> {
-        let data = res.try_into_bytes()?;
+        let data = res.try_into_bytes().await?;
         ciborium::de::from_reader(data.as_ref()).map_err(|e| ServerFnError::Args(e.to_string()))
     }
 }

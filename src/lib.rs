@@ -1,75 +1,84 @@
 #![feature(return_position_impl_trait_in_trait)]
 #![feature(async_fn_in_trait)]
 
+pub mod client;
 pub mod codec;
 pub mod error;
 pub mod request;
 pub mod response;
 
-use codec::{FromReq, FromRes, IntoReq, IntoRes};
+use client::Client;
+use codec::{Encoding, FromReq, FromRes, IntoReq, IntoRes};
 use error::ServerFnError;
 use request::Req;
 use response::Res;
 use std::future::Future;
 
-trait ServerFn
+pub trait ServerFn
 where
     Self: Send
-        + FromReq<Self::Request, Self::ArgumentEncoding>
-        + IntoReq<Self::Client, Self::ArgumentEncoding>,
+        + Sync
+        + FromReq<Self::ServerRequest, Self::InputEncoding>
+        + IntoReq<<Self::Client as Client>::Request, Self::InputEncoding>,
 {
+    const PATH: &'static str;
+
     /// The type of the HTTP client that will send the request from the client side.
     ///
     /// For example, this might be `gloo-net` in the browser, or `reqwest` for a desktop app.
     type Client: Client;
 
     /// The type of the HTTP request when received by the server function on the server side.
-    type Request: Req + Send;
+    type ServerRequest: Req + Send + Sync;
 
     /// The type of the HTTP response returned by the server function on the server side.
-    type ServerResponse: Res + Send;
-
-    /// The type of the HTTP response as received by the server function on the client side.
-    type ClientResponse: Res;
+    type ServerResponse: Res + Send + Sync;
 
     /// The return type of the server function.
     ///
     /// This needs to be converted into `ServerResponse` on the server side, and converted
     /// *from* `ClientResponse` when received by the client.
     type Output: IntoRes<Self::ServerResponse, Self::OutputEncoding>
-        + FromRes<Self::ClientResponse, Self::OutputEncoding>
-        + Send;
+        + FromRes<<Self::Client as Client>::Response, Self::OutputEncoding>
+        + Send
+        + Sync;
 
-    type ArgumentEncoding;
-    type OutputEncoding;
+    type InputEncoding: Encoding;
+    type OutputEncoding: Encoding;
 
     // the body of the fn
-    fn call_fn_server(self) -> Self::Output;
+    fn run_body(self) -> Self::Output;
 
-    fn execute(
-        req: Self::Request,
-    ) -> impl Future<Output = Result<Self::ServerResponse, ServerFnError>> + Send {
+    fn run_on_server(
+        req: Self::ServerRequest,
+    ) -> impl Future<Output = Self::ServerResponse> + Send + Sync {
         async {
-            let this = Self::from_req(req).await?;
-            let output = this.call_fn_server();
-            let res = output.into_res().await?;
-            Ok(res)
-        }
-    }
-
-    fn respond(req: Self::Request) -> impl Future<Output = Self::ServerResponse> + Send {
-        async {
-            Self::execute(req)
+            Self::execute_on_server(req)
                 .await
                 .unwrap_or_else(Self::ServerResponse::error_response)
         }
     }
 
-    async fn make_request(self) {}
-}
+    fn run_on_client(
+        self,
+    ) -> impl Future<Output = Result<Self::Output, ServerFnError>> + Send + Sync {
+        async move {
+            let req = self.into_req(Self::PATH)?;
+            let res = Self::Client::send(req).await?;
+            let output = Self::Output::from_res(res).await?;
+            Ok(output)
+        }
+    }
 
-trait Client: Req {
-    type Response: Res;
-
-    async fn send(self) -> Self::Response;
+    #[doc(hidden)]
+    fn execute_on_server(
+        req: Self::ServerRequest,
+    ) -> impl Future<Output = Result<Self::ServerResponse, ServerFnError>> + Send + Sync {
+        async {
+            let this = Self::from_req(req).await?;
+            let output = this.run_body();
+            let res = output.into_res().await?;
+            Ok(res)
+        }
+    }
 }

@@ -9,7 +9,7 @@ impl<B> Req for Request<B>
 where
     B: HttpBody + Send + Sync,
     B::Error: Display,
-    B::Data: Send,
+    B::Data: Send + Sync,
 {
     fn as_query(&self) -> Option<&str> {
         self.uri().query()

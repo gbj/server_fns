@@ -1,4 +1,4 @@
-use super::{FromReq, IntoReq};
+use super::{Encoding, FromReq, IntoReq};
 use crate::error::ServerFnError;
 use crate::request::{ClientReq, Req};
 use serde::de::DeserializeOwned;
@@ -10,22 +10,24 @@ pub struct GetUrl;
 /// Pass arguments as the URL-encoded body of a `POST` request.
 pub struct PostUrl;
 
-const CONTENT_TYPE: &str = "application/x-www-form-urlencoded";
+impl Encoding for GetUrl {
+    const CONTENT_TYPE: &'static str = "application/x-www-form-urlencoded";
+}
 
 impl<T, Request> IntoReq<Request, GetUrl> for T
 where
     Request: Req + ClientReq,
     T: Serialize + Send,
 {
-    async fn into_req(self) -> Result<Request, ServerFnError> {
+    fn into_req(self, path: &str) -> Result<Request, ServerFnError> {
         let data = serde_qs::to_string(&self)?;
-        Request::try_from_string("GET", CONTENT_TYPE, "", data).await
+        Request::try_new_post(path, GetUrl::CONTENT_TYPE, data)
     }
 }
 
 impl<T, Request> FromReq<Request, GetUrl> for T
 where
-    Request: Req + Send + 'static,
+    Request: Req + Send + Sync + 'static,
     T: DeserializeOwned,
 {
     async fn from_req(req: Request) -> Result<Self, ServerFnError> {
@@ -36,20 +38,24 @@ where
     }
 }
 
+impl Encoding for PostUrl {
+    const CONTENT_TYPE: &'static str = "application/x-www-form-urlencoded";
+}
+
 impl<T, Request> IntoReq<Request, PostUrl> for T
 where
     Request: Req + ClientReq,
     T: Serialize + Send,
 {
-    async fn into_req(self) -> Result<Request, ServerFnError> {
+    fn into_req(self, path: &str) -> Result<Request, ServerFnError> {
         let qs = serde_qs::to_string(&self)?;
-        Request::try_from_string("POST", CONTENT_TYPE, "", qs).await
+        Request::try_new_post(path, PostUrl::CONTENT_TYPE, qs)
     }
 }
 
 impl<T, Request> FromReq<Request, PostUrl> for T
 where
-    Request: Req + Send + 'static,
+    Request: Req + Send + Sync + 'static,
     T: DeserializeOwned,
 {
     async fn from_req(req: Request) -> Result<Self, ServerFnError> {
