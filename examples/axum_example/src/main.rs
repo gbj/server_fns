@@ -1,4 +1,4 @@
-use std::{collections::HashMap, future::Future, pin::Pin};
+use std::{future::Future, pin::Pin};
 
 use axum::{
     body::Body,
@@ -21,9 +21,9 @@ async fn main() {
             get(|req: Request<Body>| async move {
                 let path = req.uri().path();
                 // this is probably better done once by building a HashMap
-                if let Some(server_fn) = inventory::iter::<AxumServerFnTraitObj>
-                    .into_iter()
-                    .find(|obj| obj.path == path)
+                if let Some(server_fn) =
+                    inventory::iter::<ServerFnTraitObj<Request<Body>, Response<Body>>>()
+                        .find(|obj| obj.path == path)
                 {
                     (server_fn.handler)(req).await
                 } else {
@@ -37,12 +37,12 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
-pub struct AxumServerFnTraitObj {
+pub struct ServerFnTraitObj<Req, Res> {
     path: &'static str,
-    handler: fn(Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> + Send>>,
+    handler: fn(Req) -> Pin<Box<dyn Future<Output = Res> + Send>>,
 }
 
-inventory::collect!(AxumServerFnTraitObj);
+inventory::collect!(ServerFnTraitObj<Request<Body>, Response<Body>>);
 
 #[derive(Deserialize, Serialize)]
 struct MyServerFn {
@@ -67,7 +67,7 @@ impl ServerFn for MyServerFn {
 }
 
 inventory::submit! {
-    AxumServerFnTraitObj {
+    ServerFnTraitObj {
         path: MyServerFn::PATH,
         handler: |req| Box::pin(MyServerFn::run_on_server(req))
     }
