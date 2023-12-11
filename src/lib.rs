@@ -9,7 +9,9 @@ pub mod response;
 
 use client::Client;
 use codec::{Encoding, FromReq, FromRes, IntoReq, IntoRes};
+use dashmap::DashMap;
 use error::ServerFnError;
+use once_cell::sync::Lazy;
 use request::Req;
 use response::Res;
 use std::{future::Future, pin::Pin};
@@ -79,6 +81,21 @@ where
     }
 }
 
+#[doc(hidden)]
+pub use inventory;
+
+#[macro_export]
+macro_rules! initialize_server_fn_map {
+    ($req:ty, $res:ty) => {
+        Lazy::new(|| {
+            $crate::inventory::iter::<ServerFnTraitObj<$req, $res>>
+                .into_iter()
+                .map(|obj| (obj.path(), *obj))
+                .collect()
+        })
+    };
+}
+
 pub struct ServerFnTraitObj<Req, Res> {
     path: &'static str,
     handler: fn(Req) -> Pin<Box<dyn Future<Output = Res> + Send>>,
@@ -109,11 +126,41 @@ impl<Req, Res> Clone for ServerFnTraitObj<Req, Res> {
 
 impl<Req, Res> Copy for ServerFnTraitObj<Req, Res> {}
 
+type LazyServerFnMap<Req, Res> = Lazy<DashMap<&'static str, ServerFnTraitObj<Req, Res>>>;
+
 #[cfg(feature = "axum")]
-mod axum_inventory {
-    use crate::ServerFnTraitObj;
+pub mod axum {
+    use crate::{LazyServerFnMap, ServerFn, ServerFnTraitObj};
     use axum::body::Body;
-    use http::{Request, Response};
+    use http::{Request, Response, StatusCode};
+    use once_cell::sync::Lazy;
 
     inventory::collect!(ServerFnTraitObj<Request<Body>, Response<Body>>);
+
+    static REGISTERED_SERVER_FUNCTIONS: LazyServerFnMap<Request<Body>, Response<Body>> =
+        initialize_server_fn_map!(Request<Body>, Response<Body>);
+
+    pub fn register_explicit<T>()
+    where
+        T: ServerFn<ServerRequest = Request<Body>, ServerResponse = Response<Body>> + 'static,
+    {
+        REGISTERED_SERVER_FUNCTIONS.insert(
+            T::PATH,
+            ServerFnTraitObj::new(T::PATH, |req| Box::pin(T::run_on_server(req))),
+        );
+    }
+
+    pub async fn handle_server_fn(req: Request<Body>) -> Response<Body> {
+        let path = req.uri().path();
+        if let Some(server_fn) = REGISTERED_SERVER_FUNCTIONS.get(path) {
+            server_fn.run(req).await
+        } else {
+            Response::builder()
+            .status(StatusCode::BAD_REQUEST)
+            .body(Body::from(format!(
+                "Could not find a server function at the route {path}. \n\nIt's likely that either\n 1. The API prefix you specify in the `#[server]` macro doesn't match the prefix at which your server function handler is mounted, or \n2. You are on a platform that doesn't support automatic server function registration and you need to call ServerFn::register_explicit() on the server function type, somewhere in your `main` function.",
+            )))
+            .unwrap()
+        }
+    }
 }
