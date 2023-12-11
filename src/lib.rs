@@ -12,7 +12,7 @@ use codec::{Encoding, FromReq, FromRes, IntoReq, IntoRes};
 use error::ServerFnError;
 use request::Req;
 use response::Res;
-use std::future::Future;
+use std::{future::Future, pin::Pin};
 
 pub trait ServerFn
 where
@@ -77,4 +77,43 @@ where
             Ok(res)
         }
     }
+}
+
+pub struct ServerFnTraitObj<Req, Res> {
+    path: &'static str,
+    handler: fn(Req) -> Pin<Box<dyn Future<Output = Res> + Send>>,
+}
+
+impl<Req, Res> ServerFnTraitObj<Req, Res> {
+    pub const fn new(
+        path: &'static str,
+        handler: fn(Req) -> Pin<Box<dyn Future<Output = Res> + Send>>,
+    ) -> Self {
+        Self { path, handler }
+    }
+
+    pub fn path(&self) -> &'static str {
+        self.path
+    }
+
+    pub async fn run(&self, req: Req) -> Res {
+        (self.handler)(req).await
+    }
+}
+
+impl<Req, Res> Clone for ServerFnTraitObj<Req, Res> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<Req, Res> Copy for ServerFnTraitObj<Req, Res> {}
+
+#[cfg(feature = "axum")]
+mod axum_inventory {
+    use crate::ServerFnTraitObj;
+    use axum::body::Body;
+    use http::{Request, Response};
+
+    inventory::collect!(ServerFnTraitObj<Request<Body>, Response<Body>>);
 }

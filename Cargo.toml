@@ -4,12 +4,14 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+inventory = "0.3"
 serde = { version = "1", features = ["derive"] }
+send_wrapper = { version = "0.6", features = ["futures"], optional = true }
+
 
 ## servers 
 # actix 
 actix-web = { version = "4", optional = true }
-send_wrapper = { version = "0.6", features = ["futures"], optional = true }
 
 # axum
 axum = { version = "0.7", optional = true }

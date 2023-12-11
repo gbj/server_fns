@@ -1,6 +1,8 @@
 - [ ] allow custom error types
 - [ ] reqwest client (for desktop/native apps)
-- [ ] `inventory`/trait object for automatic registration
+- [x] `inventory`/trait object for automatic registration
+  - [ ] allow manual registration
 - [ ] macro implementation
+- [ ] router hook for redirects
 - [ ] is this compatible with adding middle per server fn?
 - [ ] modifying Response (maybe framework-specific?)
