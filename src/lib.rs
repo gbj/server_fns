@@ -87,7 +87,7 @@ pub use inventory;
 #[macro_export]
 macro_rules! initialize_server_fn_map {
     ($req:ty, $res:ty) => {
-        Lazy::new(|| {
+        once_cell::sync::Lazy::new(|| {
             $crate::inventory::iter::<ServerFnTraitObj<$req, $res>>
                 .into_iter()
                 .map(|obj| (obj.path(), *obj))
@@ -128,12 +128,12 @@ impl<Req, Res> Copy for ServerFnTraitObj<Req, Res> {}
 
 type LazyServerFnMap<Req, Res> = Lazy<DashMap<&'static str, ServerFnTraitObj<Req, Res>>>;
 
+// Axum integration
 #[cfg(feature = "axum")]
 pub mod axum {
     use crate::{LazyServerFnMap, ServerFn, ServerFnTraitObj};
     use axum::body::Body;
     use http::{Request, Response, StatusCode};
-    use once_cell::sync::Lazy;
 
     inventory::collect!(ServerFnTraitObj<Request<Body>, Response<Body>>);
 
@@ -161,6 +161,47 @@ pub mod axum {
                 "Could not find a server function at the route {path}. \n\nIt's likely that either\n 1. The API prefix you specify in the `#[server]` macro doesn't match the prefix at which your server function handler is mounted, or \n2. You are on a platform that doesn't support automatic server function registration and you need to call ServerFn::register_explicit() on the server function type, somewhere in your `main` function.",
             )))
             .unwrap()
+        }
+    }
+}
+
+// Actix integration
+#[cfg(feature = "actix")]
+pub mod actix {
+    use actix_web::{HttpRequest, HttpResponse};
+    use send_wrapper::SendWrapper;
+
+    use crate::request::actix::ActixRequest;
+    use crate::response::actix::ActixResponse;
+    use crate::{LazyServerFnMap, ServerFn, ServerFnTraitObj};
+
+    inventory::collect!(ServerFnTraitObj<ActixRequest, ActixResponse>);
+
+    static REGISTERED_SERVER_FUNCTIONS: LazyServerFnMap<ActixRequest, ActixResponse> =
+        initialize_server_fn_map!(ActixRequest, ActixResponse);
+
+    pub fn register_explicit<T>()
+    where
+        T: ServerFn<ServerRequest = ActixRequest, ServerResponse = ActixResponse> + 'static,
+    {
+        REGISTERED_SERVER_FUNCTIONS.insert(
+            T::PATH,
+            ServerFnTraitObj::new(T::PATH, |req| Box::pin(T::run_on_server(req))),
+        );
+    }
+
+    pub async fn handle_server_fn(req: HttpRequest) -> HttpResponse {
+        let path = req.uri().path();
+        if let Some(server_fn) = REGISTERED_SERVER_FUNCTIONS.get(path) {
+            server_fn
+                .run(ActixRequest(SendWrapper::new(req)))
+                .await
+                .0
+                .take()
+        } else {
+            HttpResponse::BadRequest().body(format!(
+                "Could not find a server function at the route {path}. \n\nIt's likely that either\n 1. The API prefix you specify in the `#[server]` macro doesn't match the prefix at which your server function handler is mounted, or \n2. You are on a platform that doesn't support automatic server function registration and you need to call ServerFn::register_explicit() on the server function type, somewhere in your `main` function.",
+            ))
         }
     }
 }

@@ -4,16 +4,18 @@ use bytes::Bytes;
 use send_wrapper::SendWrapper;
 use std::future::Future;
 
-impl Req for HttpRequest {
+pub struct ActixRequest(pub(crate) SendWrapper<HttpRequest>);
+
+impl Req for ActixRequest {
     fn as_query(&self) -> Option<&str> {
-        self.uri().query()
+        self.0.uri().query()
     }
 
     fn try_into_bytes(self) -> impl Future<Output = Result<Bytes, ServerFnError>> + Send {
         // Actix is going to keep this on a single thread anyway so it's fine to wrap it
         // with SendWrapper, which makes it `Send` but will panic if it moves to another thread
         SendWrapper::new(async move {
-            Bytes::extract(&self)
+            Bytes::extract(&self.0)
                 .await
                 .map_err(|e| ServerFnError::Deserialization(e.to_string()))
         })
@@ -23,7 +25,7 @@ impl Req for HttpRequest {
         // Actix is going to keep this on a single thread anyway so it's fine to wrap it
         // with SendWrapper, which makes it `Send` but will panic if it moves to another thread
         SendWrapper::new(async move {
-            String::extract(&self)
+            String::extract(&self.0)
                 .await
                 .map_err(|e| ServerFnError::Deserialization(e.to_string()))
         })
