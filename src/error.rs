@@ -1,5 +1,14 @@
-use core::fmt::Display;
-use thiserror::Error;
+use core::fmt::{self, Display};
+
+// Define a new type that wraps the unit type `()`
+pub struct UnitDisplay(());
+
+// Implement `Display` for `UnitDisplay`
+impl fmt::Display for UnitDisplay {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Unit Type Displayed")
+    }
+}
 
 #[derive(Debug)]
 pub struct WrapError<T>(pub T);
@@ -61,36 +70,62 @@ impl<E> ViaError<E> for WrapError<E> {
     }
 }
 /// The Error type returned by ServerFnErrors
-#[derive(Debug, Error, Clone)]
-pub enum ServerFnError<E = ()> {
-    #[error("{0}")]
+#[derive(Debug, Clone)]
+pub enum ServerFnError<E = UnitDisplay> {
     WrappedServerError(E),
     /// Error while trying to register the server function (only occurs in case of poisoned RwLock).
-    #[error("error while trying to register the server function: {0}")]
     Registration(String),
     /// Occurs on the client if there is a network error while trying to run function on server.
-    #[error("error reaching server to call server function: {0}")]
     Request(String),
     /// Occurs on the server if there is an error creating an HTTP response.
-    #[error("error generating HTTP response: {0}")]
     Response(String),
     /// Occurs when there is an error while actually running the function on the server.
-    #[error("error running server function: {0}")]
     ServerError(String),
     /// Occurs on the client if there is an error deserializing the server's response.
-    #[error("error deserializing server function results: {0}")]
     Deserialization(String),
     /// Occurs on the client if there is an error serializing the server function arguments.
-    #[error("error serializing server function arguments: {0}")]
     Serialization(String),
     /// Occurs on the server if there is an error deserializing one of the arguments that's been sent.
-    #[error("error deserializing server function arguments: {0}")]
     Args(String),
     /// Occurs on the server if there's a missing argument.
-    #[error("missing argument {0}")]
     MissingArg(String),
 }
-
+impl std::fmt::Display for ServerFnError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                ServerFnError::Registration(s) =>
+                    format!("error while trying to register the server function: {s}"),
+                ServerFnError::Request(s) =>
+                    format!("error reaching server to call server function: {s}"),
+                ServerFnError::ServerError(s) => format!("error running server function: {s}"),
+                ServerFnError::Deserialization(s) =>
+                    format!("error deserializing server function results: {s}"),
+                ServerFnError::Serialization(s) =>
+                    format!("error serializing server function arguments: {s}"),
+                ServerFnError::Args(s) =>
+                    format!("error deserializing server function arguments: {s}"),
+                ServerFnError::MissingArg(s) => format!("missing argument {s}"),
+                ServerFnError::Response(s) => format!("error generating HTTP response: {s}"),
+                ServerFnError::WrappedServerError(e) => format!("{}", e),
+            }
+        )
+    }
+}
+impl<E> std::error::Error for ServerFnError<E>
+where
+    E: std::error::Error + 'static,
+    ServerFnError<E>: std::fmt::Display,
+{
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            ServerFnError::WrappedServerError(e) => Some(e),
+            _ => None,
+        }
+    }
+}
 /// We provide a conversion from a regular String to ServerFnError for you,
 /// so you should be able to do this `fn function() -> Result<(), String>`
 /// and handle that with `function()?`
@@ -108,11 +143,3 @@ impl From<String> for ServerFnError<String> {
 /// A type tag for ServerFnError so we can special case it
 pub(crate) trait ServerFnErrorKind {}
 impl ServerFnErrorKind for ServerFnError {}
-
- 
-    
-    
-        
-        
-    
-    

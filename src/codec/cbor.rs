@@ -20,7 +20,7 @@ where
 {
     fn into_req(self, path: &str) -> Result<Request, ServerFnError> {
         let mut buffer: Vec<u8> = Vec::new();
-        ciborium::ser::into_writer(&self, &mut buffer)?;
+        ciborium::ser::into_writer(&self, &mut buffer).map_err(|e| ServerFnError::Serialization(e.to_string()))?;
         Request::try_new_post_bytes(path, Cbor::CONTENT_TYPE, Bytes::from(buffer))
     }
 }

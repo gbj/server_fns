@@ -20,7 +20,8 @@ where
     T: Serialize + Send,
 {
     fn into_req(self, path: &str) -> Result<Request, ServerFnError> {
-        let data = serde_qs::to_string(&self)?;
+        let data =
+            serde_qs::to_string(&self).map_err(|e| ServerFnError::Serialization(e.to_string()))?;
         Request::try_new_post(path, GetUrl::CONTENT_TYPE, data)
     }
 }
@@ -48,7 +49,7 @@ where
     T: Serialize + Send,
 {
     fn into_req(self, path: &str) -> Result<Request, ServerFnError> {
-        let qs = serde_qs::to_string(&self)?;
+        let qs = serde_qs::to_string(&self).map_err(|e| ServerFnError::Serialization(e.to_string()))?;
         Request::try_new_post(path, PostUrl::CONTENT_TYPE, qs)
     }
 }
