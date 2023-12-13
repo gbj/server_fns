@@ -1,10 +1,10 @@
-use super::{Encoding, FromReq, FromRes, IntoReq, IntoRes};
+use super::{Encoding, FromReq, FromRes};
 use crate::error::ServerFnError;
 use crate::request::{ClientReq, Req};
 use crate::response::{ClientRes, Res};
+use crate::{server_fn_error, IntoReq, IntoRes};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-
 /// Pass arguments and receive responses as JSON in the body of a `POST` request.
 pub struct SerdeJson;
 
@@ -53,5 +53,10 @@ where
     async fn from_res(res: Response) -> Result<Self, ServerFnError> {
         let data = res.try_into_string().await?;
         serde_json::from_str(&data).map_err(|e| ServerFnError::Deserialization(e.to_string()))
+    }
+}
+impl From<serde_json::Error> for ServerFnError<serde_json::Error> {
+    fn from(value: serde_json::Error) -> ServerFnError<serde_json::Error> {
+        server_fn_error!(value)
     }
 }

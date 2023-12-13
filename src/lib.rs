@@ -3,6 +3,7 @@
 
 pub mod client;
 pub mod codec;
+#[macro_use]
 pub mod error;
 pub mod request;
 pub mod response;

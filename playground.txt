@@ -1,0 +1,103 @@
+use thiserror::Error;
+use core::fmt::Display;
+#[derive(Debug)]
+pub struct WrapError<T>(T);
+
+#[derive(Debug, Default, Error, Clone)]
+pub enum AnError{
+    #[error("an error occured")]
+    #[default]
+    Error,
+}
+
+#[derive(Debug, Clone)]
+pub struct NotError();
+
+pub struct Nothing();
+
+macro_rules! server_fn_error{
+   () => ({
+       use $crate::{ViaError, WrapError};
+       (&&&&&WrapError(())).into_server_error()
+    });
+    ($err:expr) => ({
+        use $crate::{ViaError,WrapError};
+        match $err{
+            error => (&&&&&WrapError(error)).into_server_error()
+        }
+    });
+}
+
+trait ViaError<E> { fn into_server_error(&self) -> ServerFnError<E>; }
+
+impl<E: ServerFnErrorKind + std::error::Error + Clone> ViaError<E> for &&&&WrapError<ServerFnError<E>> {
+    fn into_server_error(&self) -> ServerFnError<E> { 
+        println!("ServerFnError");
+        self.0.clone()
+    // match self.0.downcast::<ServerFnError<()>>(){
+    //     Some(e) => return e,
+    //     None => panic!("ServerFnErrorKind can only be impled for ServerFnError"),
+    // }
+    }
+}
+impl ViaError<()> for &&&WrapError<()> {
+    fn into_server_error(&self) -> ServerFnError<()> { 
+    ServerFnError::WrappedServerError(self.0.clone())
+
+    }
+}
+
+impl<E: std::error::Error + Clone> ViaError<E> for &&WrapError<E> {
+    fn into_server_error(&self) -> ServerFnError<E> { 
+    ServerFnError::WrappedServerError(self.0.clone())
+
+    }
+}
+
+impl<E: Display + Clone> ViaError<E> for &WrapError<E> {
+    fn into_server_error(&self) -> ServerFnError<E> { 
+        ServerFnError::WrappedServerError(self.0.clone())
+    }
+}
+
+impl <E> ViaError<E> for WrapError<E> {
+    fn into_server_error(&self) -> ServerFnError<E> { 
+    println!("Fallback");
+    panic!("This does not Implement Error+Clone or Display+Clone. Please do that")
+        
+    }
+}
+
+#[derive(Debug, Error, Clone)]
+pub enum ServerFnError<E = ()>{
+    #[error("an error occured")]
+    WrappedServerError(E),
+    #[error("another error occured")]
+    AnotherErrorType,
+}
+
+impl<E: Clone> From<E> for ServerFnError<E>
+{
+    fn from(err: E) -> Self {
+       server_fn_error!(err)
+    }
+}
+
+pub trait ServerFnErrorKind{}
+//impl<E> ServerFnErrorKind for ServerFnError<E>{}
+impl ServerFnErrorKind for ServerFnError{}
+//impl ServerFnErrorKind for (){}
+
+pub fn main() -> Result<(), ServerFnError>{
+// (&&&&WrapError(AnError::default())).into_server_error();
+// (&&&&WrapError(NotError())).into_server_error();
+// (&&&&WrapError(Nothing())).into_server_error();
+// (&&&&WrapError(())).into_server_error();
+
+//ServerFnError::new(AnError::default());
+println!("{:#?}",server_fn_error!(AnError::default()));
+println!("{:#?}",server_fn_error!());
+println!("{:#?}",server_fn_error!(()));
+Ok(())
+
+}
