@@ -4,6 +4,11 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+# used for hashing paths in #[server] macro
+const_format = "0.2"
+xxhash-rust = { version = "0.8", features = ["const_xxh64"] }
+
+# used across multiple featurs
 serde = { version = "1", features = ["derive"] }
 send_wrapper = { version = "0.6", features = ["futures"], optional = true }
 

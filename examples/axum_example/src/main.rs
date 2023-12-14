@@ -1,17 +1,11 @@
-use axum::{
-    body::Body,
-    http::{Request, Response},
-    routing::get,
-    Router,
-};
-use serde::{Deserialize, Serialize};
-use server_fns::{
-    client::browser::BrowserClient, codec::json::SerdeJson, codec::url::GetUrl, ServerFn,
-    ServerFnTraitObj,
-};
+#![feature(async_fn_in_trait)]
+
+use axum::{routing::get, Router};
+use server_fn_macro_default::server;
+use server_fns::error::ServerFnError;
 
 // Start #[server] expansion
-#[derive(Deserialize, Serialize)]
+/* #[derive(Deserialize, Serialize)]
 struct MyServerFn {
     foo: String,
     bar: f32,
@@ -38,7 +32,7 @@ inventory::submit! {
         MyServerFn::PATH,
         |req| Box::pin(MyServerFn::run_on_server(req))
     )
-}
+} */
 // end #[server] expansion
 
 /* Main fn */
@@ -52,4 +46,10 @@ async fn main() {
     // run our app with hyper, listening globally on port 3000
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
     axum::serve(listener, app).await.unwrap();
+}
+
+#[server]
+pub async fn my_server_fn_2() -> Result<(), ServerFnError> {
+    println!("on server");
+    Ok(())
 }

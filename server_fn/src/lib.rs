@@ -17,6 +17,14 @@ use request::Req;
 use response::Res;
 use std::{future::Future, pin::Pin};
 
+// reexports for the sake of the macro
+#[doc(hidden)]
+pub use const_format;
+#[doc(hidden)]
+pub use serde;
+#[doc(hidden)]
+pub use xxhash_rust;
+
 pub trait ServerFn
 where
     Self: Send
@@ -48,7 +56,7 @@ where
     type OutputEncoding: Encoding;
 
     // the body of the fn
-    fn run_body(self) -> Self::Output;
+    fn run_body(self) -> impl Future<Output = Self::Output> + Send;
 
     fn run_on_server(
         req: Self::ServerRequest,
@@ -75,7 +83,7 @@ where
     ) -> impl Future<Output = Result<Self::ServerResponse, ServerFnError>> + Send {
         async {
             let this = Self::from_req(req).await?;
-            let output = this.run_body();
+            let output = this.run_body().await;
             let res = output.into_res().await?;
             Ok(res)
         }

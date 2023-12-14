@@ -1,0 +1,19 @@
+[package]
+name = "server_fn_macro_default"
+version = "0.1.0"
+edition = "2021"
+authors = ["Greg Johnston"]
+license = "MIT"
+repository = "https://github.com/leptos-rs/leptos"
+description = "The default implementation of the server_fn macro without a context"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = { version = "2" }
+server_fn_macro = { path = "../server_fn_macro" }
+
+[features]
+nightly = ["server_fn_macro/nightly"]
+ssr = ["server_fn_macro/ssr"]
