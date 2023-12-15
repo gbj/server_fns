@@ -2,7 +2,8 @@
 - [ ] reqwest client (for desktop/native apps)
 - [x] `inventory`/trait object for automatic registration
   - [ ] allow manual registration
-- [ ] macro implementation
+- [x] macro implementation
+- [ ] handle error codes in client (i.e., server fn not found)
 - [ ] router hook for redirects
 - [ ] is this compatible with adding middle per server fn?
 - [ ] modifying Response (maybe framework-specific?)
