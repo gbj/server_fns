@@ -11,7 +11,7 @@ pub mod response;
 use client::Client;
 use codec::{Encoding, FromReq, FromRes, IntoReq, IntoRes};
 use dashmap::DashMap;
-use error::ServerFnError;
+pub use error::ServerFnError;
 use once_cell::sync::Lazy;
 use request::Req;
 use response::Res;
@@ -56,7 +56,7 @@ where
     type OutputEncoding: Encoding;
 
     // the body of the fn
-    fn run_body(self) -> impl Future<Output = Self::Output> + Send;
+    fn run_body(self) -> impl Future<Output = Result<Self::Output, ServerFnError>> + Send;
 
     fn run_on_server(
         req: Self::ServerRequest,
@@ -83,7 +83,7 @@ where
     ) -> impl Future<Output = Result<Self::ServerResponse, ServerFnError>> + Send {
         async {
             let this = Self::from_req(req).await?;
-            let output = this.run_body().await;
+            let output = this.run_body().await?;
             let res = output.into_res().await?;
             Ok(res)
         }
@@ -161,6 +161,13 @@ pub mod axum {
 
     pub async fn handle_server_fn(req: Request<Body>) -> Response<Body> {
         let path = req.uri().path();
+        /* println!(
+            "{:?}",
+            REGISTERED_SERVER_FUNCTIONS
+                .iter()
+                .map(|(k, _)| k)
+                .collect::<Vec<_>>()
+        ); */
         if let Some(server_fn) = REGISTERED_SERVER_FUNCTIONS.get(path) {
             server_fn.run(req).await
         } else {

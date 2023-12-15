@@ -4,37 +4,6 @@ use axum::{routing::get, Router};
 use server_fn_macro_default::server;
 use server_fns::error::ServerFnError;
 
-// Start #[server] expansion
-/* #[derive(Deserialize, Serialize)]
-struct MyServerFn {
-    foo: String,
-    bar: f32,
-}
-
-impl ServerFn for MyServerFn {
-    const PATH: &'static str = "/api/my_server_fn123";
-
-    type Client = BrowserClient;
-    type ServerRequest = Request<Body>;
-    type ServerResponse = Response<Body>;
-    type Output = f32;
-    type InputEncoding = GetUrl;
-    type OutputEncoding = SerdeJson;
-
-    fn run_body(self) -> Self::Output {
-        let MyServerFn { foo, bar } = self;
-        foo.len() as f32 + bar
-    }
-}
-
-inventory::submit! {
-    ServerFnTraitObj::new(
-        MyServerFn::PATH,
-        |req| Box::pin(MyServerFn::run_on_server(req))
-    )
-} */
-// end #[server] expansion
-
 /* Main fn */
 #[tokio::main]
 async fn main() {
@@ -48,8 +17,8 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
-#[server]
-pub async fn my_server_fn_2() -> Result<(), ServerFnError> {
+#[server(endpoint = "/my_server_fn", input = GetUrl)]
+pub async fn my_server_fn(value: i32) -> Result<i32, ServerFnError> {
     println!("on server");
-    Ok(())
+    Ok(value * 2)
 }

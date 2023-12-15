@@ -6,13 +6,13 @@ use crate::{IntoReq, IntoRes};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 /// Pass arguments and receive responses as JSON in the body of a `POST` request.
-pub struct SerdeJson;
+pub struct Json;
 
-impl super::Encoding for SerdeJson {
+impl super::Encoding for Json {
     const CONTENT_TYPE: &'static str = "application/json";
 }
 
-impl<T, Request> IntoReq<Request, SerdeJson> for T
+impl<T, Request> IntoReq<Request, Json> for T
 where
     Request: ClientReq,
     T: Serialize + Send,
@@ -20,11 +20,11 @@ where
     fn into_req(self, path: &str) -> Result<Request, ServerFnError> {
         let data = serde_json::to_string(&self)
             .map_err(|e| ServerFnError::Serialization(e.to_string()))?;
-        Request::try_new_post(path, SerdeJson::CONTENT_TYPE, data)
+        Request::try_new_post(path, Json::CONTENT_TYPE, data)
     }
 }
 
-impl<T, Request> FromReq<Request, SerdeJson> for T
+impl<T, Request> FromReq<Request, Json> for T
 where
     Request: Req + Send + 'static,
     T: DeserializeOwned,
@@ -35,7 +35,7 @@ where
     }
 }
 
-impl<T, Response> IntoRes<Response, SerdeJson> for T
+impl<T, Response> IntoRes<Response, Json> for T
 where
     Response: Res,
     T: Serialize + Send,
@@ -43,11 +43,11 @@ where
     async fn into_res(self) -> Result<Response, ServerFnError> {
         let data = serde_json::to_string(&self)
             .map_err(|e| ServerFnError::Serialization(e.to_string()))?;
-        Response::try_from_string(SerdeJson::CONTENT_TYPE, data)
+        Response::try_from_string(Json::CONTENT_TYPE, data)
     }
 }
 
-impl<T, Response> FromRes<Response, SerdeJson> for T
+impl<T, Response> FromRes<Response, Json> for T
 where
     Response: ClientRes + Send,
     T: DeserializeOwned + Send,

@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use server_fns::request::actix::ActixRequest;
 use server_fns::response::actix::ActixResponse;
 use server_fns::{
-    client::browser::BrowserClient, codec::json::SerdeJson, codec::url::GetUrl, ServerFn,
+    client::browser::BrowserClient, codec::json::Json, codec::url::GetUrl, ServerFn,
     ServerFnTraitObj,
 };
 
@@ -22,7 +22,7 @@ impl ServerFn for MyServerFn {
     type ServerResponse = ActixResponse;
     type Output = f32;
     type InputEncoding = GetUrl;
-    type OutputEncoding = SerdeJson;
+    type OutputEncoding = Json;
 
     fn run_body(self) -> Self::Output {
         let MyServerFn { foo, bar } = self;

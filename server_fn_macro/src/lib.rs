@@ -9,7 +9,7 @@
 use convert_case::{Case, Converter};
 use proc_macro2::{Literal, Span, TokenStream as TokenStream2};
 use proc_macro_error::abort;
-use quote::{quote, quote_spanned};
+use quote::{quote, quote_spanned, ToTokens};
 use syn::{
     parse::{Parse, ParseStream},
     punctuated::Punctuated,
@@ -61,9 +61,9 @@ pub fn server_macro_impl(
     let prefix = prefix.unwrap_or_else(|| Literal::string(default_path));
     let fn_path = fn_path.unwrap_or_else(|| Literal::string(""));
     let input = input.unwrap_or_else(|| syn::parse_quote!(PostUrl));
-    let input = quote!(#server_fn_path::#input);
-    let output = output.unwrap_or_else(|| syn::parse_quote!(SerdeJson));
-    let output = quote!(#server_fn_path::#output);
+    let input = codec_ident(server_fn_path.as_ref(), input);
+    let output = output.unwrap_or_else(|| syn::parse_quote!(Json));
+    let output = codec_ident(server_fn_path.as_ref(), output);
     // default to PascalCase version of function name if no struct name given
     let struct_name = struct_name.unwrap_or_else(|| {
         let upper_camel_case_name = Converter::new()
@@ -202,14 +202,14 @@ pub fn server_macro_impl(
     // run_body in the trait implementation
     let run_body = if cfg!(feature = "ssr") {
         quote! {
-            async fn run_body(self) -> Self::Output {
+            async fn run_body(self) -> Result<Self::Output, #server_fn_path::ServerFnError> {
                 let #struct_name { #(#field_names),* } = self;
-                #dummy_name(#(#field_names),*)
+                #dummy_name(#(#field_names),*).await
             }
         }
     } else {
         quote! {
-            async fn run_body(self) -> Self::Output {
+            async fn run_body(self) -> Result<Self::Output, #server_fn_path::ServerFnError> {
                 let #struct_name { #(#field_names),* } = self;
                 todo!()
             }
@@ -262,6 +262,25 @@ pub fn server_macro_impl(
         ::axum::http::Response<::axum::body::Body>
     };
 
+    // generate path
+    let path = quote! {
+        if #fn_path.is_empty() {
+            #server_fn_path::const_format::concatcp!(
+                #prefix,
+                #fn_name_as_str,
+                #server_fn_path::xxhash_rust::const_xxh64::xxh64(
+                    concat!(env!(#key_env_var), ":", file!(), ":", line!(), ":", column!()).as_bytes(),
+                    0
+                )
+            )
+        } else {
+            #server_fn_path::const_format::concatcp!(
+                #prefix,
+                #fn_path
+            )
+        }
+    };
+
     Ok(quote::quote! {
         #args_docs
         #docs
@@ -272,13 +291,7 @@ pub fn server_macro_impl(
 
         impl #server_fn_path::ServerFn for #struct_name {
             // TODO prefix
-            const PATH: &'static str = #server_fn_path::const_format::concatcp!(
-                #fn_name_as_str,
-                #server_fn_path::xxhash_rust::const_xxh64::xxh64(
-                    concat!(env!(#key_env_var), ":", file!(), ":", line!(), ":", column!()).as_bytes(),
-                    0
-                )
-            );
+            const PATH: &'static str = #path;
 
             type Client = #client;
             type ServerRequest = #req;
@@ -325,7 +338,7 @@ pub fn server_macro_impl(
         type ServerResponse = Response<Body>;
         type Output = f32;
         type InputEncoding = GetUrl;
-        type OutputEncoding = SerdeJson;
+        type OutputEncoding = Json;
 
         fn run_body(self) -> Self::Output {
             let MyServerFn { foo, bar } = self;
@@ -429,11 +442,6 @@ impl Parse for ServerFnArgs {
                                 key.span(),
                                 "keyword argument repeated: `endpoint`",
                             ));
-                        } else if input.is_some() {
-                            return Err(syn::Error::new(
-                                key.span(),
-                                "keyword argument repeated: `input`",
-                            ));
                         }
                         fn_path = Some(stream.parse()?);
                     } else if key == "input" {
@@ -442,10 +450,10 @@ impl Parse for ServerFnArgs {
                                 key.span(),
                                 "`encoding` and `input` should not both be specified",
                             ));
-                        } else if output.is_some() {
+                        } else if input.is_some() {
                             return Err(syn::Error::new(
                                 key.span(),
-                                "keyword argument repeated: `output`",
+                                "keyword argument repeated: `input`",
                             ));
                         }
                         input = Some(stream.parse()?);
@@ -454,6 +462,11 @@ impl Parse for ServerFnArgs {
                             return Err(syn::Error::new(
                                 key.span(),
                                 "`encoding` and `output` should not both be specified",
+                            ));
+                        } else if output.is_some() {
+                            return Err(syn::Error::new(
+                                key.span(),
+                                "keyword argument repeated: `output`",
                             ));
                         }
                         output = Some(stream.parse()?);
@@ -504,7 +517,7 @@ impl Parse for ServerFnArgs {
             match encoding.to_string().to_lowercase().as_str() {
                 "\"url\"" => {
                     input = syn::parse_quote!(PostUrl);
-                    output = syn::parse_quote!(SerdeJson);
+                    output = syn::parse_quote!(Json);
                 }
                 "\"cbor\"" => {
                     input = syn::parse_quote!(Cbor);
@@ -516,7 +529,7 @@ impl Parse for ServerFnArgs {
                 }
                 "\"getjson\"" => {
                     input = syn::parse_quote!(GetUrl);
-                    output = syn::parse_quote!(SerdeJson);
+                    output = syn::parse_quote!(Json);
                 }
                 _ => return Err(syn::Error::new(encoding.span(), "Encoding not found.")),
             }
@@ -634,4 +647,19 @@ impl ServerFnBody {
             #block
         }
     }
+}
+
+/// Returns either the path of the codec (if it's a builtin) or the
+/// original ident.
+fn codec_ident(server_fn_path: Option<&Path>, ident: Ident) -> TokenStream2 {
+    if let Some(server_fn_path) = server_fn_path {
+        let str = ident.to_string();
+        if ["GetUrl", "PostUrl", "Cbor", "Json", "Rkyv"].contains(&str.as_str()) {
+            return quote! {
+                #server_fn_path::codec::#ident
+            };
+        }
+    }
+
+    ident.into_token_stream()
 }

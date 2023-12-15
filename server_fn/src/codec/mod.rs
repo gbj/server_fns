@@ -1,13 +1,21 @@
 #[cfg(feature = "cbor")]
-pub mod cbor;
+mod cbor;
+#[cfg(feature = "cbor")]
+pub use cbor::*;
 #[cfg(feature = "json")]
-pub mod json;
+mod json;
+#[cfg(feature = "json")]
+pub use json::*;
 #[cfg(feature = "rkyv")]
-pub mod rkyv;
+mod rkyv;
+#[cfg(feature = "rkyv")]
+pub use rkyv::*;
 #[cfg(feature = "url")]
-pub mod url;
+mod url;
 use crate::error::ServerFnError;
 use futures::Future;
+#[cfg(feature = "url")]
+pub use url::*;
 
 pub trait FromReq<Request, Encoding>
 where
