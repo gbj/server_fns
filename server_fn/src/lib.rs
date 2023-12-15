@@ -161,13 +161,7 @@ pub mod axum {
 
     pub async fn handle_server_fn(req: Request<Body>) -> Response<Body> {
         let path = req.uri().path();
-        /* println!(
-            "{:?}",
-            REGISTERED_SERVER_FUNCTIONS
-                .iter()
-                .map(|(k, _)| k)
-                .collect::<Vec<_>>()
-        ); */
+
         if let Some(server_fn) = REGISTERED_SERVER_FUNCTIONS.get(path) {
             server_fn.run(req).await
         } else {

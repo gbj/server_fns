@@ -24,7 +24,7 @@ impl ClientReq for BrowserRequest {
 
     fn try_new_post(path: &str, content_type: &str, body: String) -> Result<Self, ServerFnError> {
         Ok(Self(SendWrapper::new(
-            Request::get(path)
+            Request::post(path)
                 // TODO 'Accept' header
                 .header("Content-Type", content_type)
                 .body(body)
@@ -40,7 +40,7 @@ impl ClientReq for BrowserRequest {
         let body: &[u8] = &body;
         let body = Uint8Array::from(body).buffer();
         Ok(Self(SendWrapper::new(
-            Request::get(path)
+            Request::post(path)
                 // TODO 'Accept' header
                 .header("Content-Type", content_type)
                 .body(body)

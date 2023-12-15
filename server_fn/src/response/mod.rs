@@ -28,3 +28,21 @@ pub trait ClientRes {
     /// Attempts to extract a binary blob from an HTTP response.
     fn try_into_bytes(self) -> impl Future<Output = Result<Bytes, ServerFnError>> + Send;
 }
+
+/// A mocked response type that can be used in place of the actual server response,
+/// when compiling for the browser.
+pub struct BrowserMockRes;
+
+impl Res for BrowserMockRes {
+    fn try_from_string(content_type: &str, data: String) -> Result<Self, ServerFnError> {
+        unreachable!()
+    }
+
+    fn try_from_bytes(content_type: &str, data: Bytes) -> Result<Self, ServerFnError> {
+        unreachable!()
+    }
+
+    fn error_response(err: ServerFnError) -> Self {
+        unreachable!()
+    }
+}

@@ -123,11 +123,14 @@ pub fn server_macro_impl(
         })
         .collect::<Result<Vec<_>>>()?;
 
-    let fn_args = body.inputs.iter().filter_map(|f| match f {
-        FnArg::Receiver(_) => None,
-        FnArg::Typed(t) => Some(t),
-    });
-    let fn_args_2 = fn_args.clone();
+    let fn_args = body
+        .inputs
+        .iter()
+        .filter_map(|f| match f {
+            FnArg::Receiver(_) => None,
+            FnArg::Typed(t) => Some(t),
+        })
+        .collect::<Vec<_>>();
 
     let field_names = body
         .inputs
@@ -158,6 +161,15 @@ pub fn server_macro_impl(
     };
 
     // build server fn path
+    let serde_path = server_fn_path.as_ref().map(|path| {
+        let path = path
+            .segments
+            .iter()
+            .map(|segment| segment.ident.to_string())
+            .collect::<Vec<_>>();
+        let path = path.join("::");
+        format!("{path}::serde")
+    });
     let server_fn_path = server_fn_path
         .map(|path| quote!(#path))
         .unwrap_or_else(|| quote! { server_fn });
@@ -230,16 +242,10 @@ pub fn server_macro_impl(
             #docs
             #(#attrs)*
             #[allow(unused_variables)]
-            #vis async fn #fn_name(#(#fn_args_2),*) #output_arrow #return_ty {
-                todo!()
-                /* #server_fn_path::call_server_fn(
-                    &{
-                        let prefix = #struct_name::PREFIX.to_string();
-                        prefix + "/" + #struct_name::URL
-                    },
-                    #struct_name { #(#field_names),* },
-                    #encoding
-                ).await */
+            #vis async fn #fn_name(#(#fn_args),*) #output_arrow #return_ty {
+                use #server_fn_path::ServerFn;
+                let data = #struct_name { #(#field_names),* };
+                data.run_on_client().await
             }
         }
     };
@@ -255,11 +261,23 @@ pub fn server_macro_impl(
     };
 
     // TODO Actix etc
-    let req = quote! {
-        ::axum::http::Request<::axum::body::Body>
+    let req = if cfg!(feature = "ssr") {
+        quote! {
+            ::axum::http::Request<::axum::body::Body>
+        }
+    } else {
+        quote! {
+            #server_fn_path::request::BrowserMockReq
+        }
     };
-    let res = quote! {
-        ::axum::http::Response<::axum::body::Body>
+    let res = if cfg!(feature = "ssr") {
+        quote! {
+            ::axum::http::Response<::axum::body::Body>
+        }
+    } else {
+        quote! {
+            #server_fn_path::response::BrowserMockRes
+        }
     };
 
     // generate path
@@ -267,6 +285,7 @@ pub fn server_macro_impl(
         if #fn_path.is_empty() {
             #server_fn_path::const_format::concatcp!(
                 #prefix,
+                "/",
                 #fn_name_as_str,
                 #server_fn_path::xxhash_rust::const_xxh64::xxh64(
                     concat!(env!(#key_env_var), ":", file!(), ":", line!(), ":", column!()).as_bytes(),
@@ -276,6 +295,7 @@ pub fn server_macro_impl(
         } else {
             #server_fn_path::const_format::concatcp!(
                 #prefix,
+                "/",
                 #fn_path
             )
         }
@@ -285,6 +305,7 @@ pub fn server_macro_impl(
         #args_docs
         #docs
         #[derive(Clone, Debug, #derives)]
+        #[serde(crate = #serde_path)]
         pub struct #struct_name {
             #(#fields),*
         }
@@ -309,72 +330,6 @@ pub fn server_macro_impl(
 
         #dummy
     })
-
-    /* if let Ok(dummy) = &mut dummy {
-        let ident = &mut dummy.sig.ident;
-        *ident = Ident::new(&format!("__{ident}"), ident.span());
-    }
-
-    match (&mut dummy, parse_result) {
-        (Ok(unexpanded), Ok(model)) => todo!(),
-        (Ok(dummy), Err(_)) => todo!(),
-        (Err(_), Ok(_)) => todo!(),
-        (Err(_), Err(_)) => todo!(),
-    } */
-
-    /* Expands to e.g.,
-
-    #[derive(Deserialize, Serialize)]
-    struct MyServerFn {
-        foo: String,
-        bar: f32,
-    }
-
-    impl ServerFn for MyServerFn {
-        const PATH: &'static str = "/api/my_server_fn123";
-
-        type Client = BrowserClient;
-        type ServerRequest = Request<Body>;
-        type ServerResponse = Response<Body>;
-        type Output = f32;
-        type InputEncoding = GetUrl;
-        type OutputEncoding = Json;
-
-        fn run_body(self) -> Self::Output {
-            let MyServerFn { foo, bar } = self;
-            foo.len() as f32 + bar
-        }
-    } */
-}
-
-/// A model that is more lenient in case of a syntax error in the function body,
-/// but does not actually implement the behavior of the real model. This is
-/// used to improve IDEs and rust-analyzer's auto-completion behavior in case
-/// of a syntax error.
-struct DummyModel {
-    pub attrs: Vec<Attribute>,
-    pub vis: Visibility,
-    pub sig: Signature,
-    pub body: TokenStream2,
-}
-
-impl Parse for DummyModel {
-    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        let attrs = input.call(Attribute::parse_outer)?;
-        let vis: Visibility = input.parse()?;
-        let sig: Signature = input.parse()?;
-
-        // The body is left untouched, so it will not cause an error
-        // even if the syntax is invalid.
-        let body: TokenStream2 = input.parse()?;
-
-        Ok(Self {
-            attrs,
-            vis,
-            sig,
-            body,
-        })
-    }
 }
 
 #[derive(Debug)]

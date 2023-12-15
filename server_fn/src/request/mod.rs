@@ -34,3 +34,21 @@ pub trait Req: Sized {
     /// Attempts to convert the body of the request into a string.
     fn try_into_string(self) -> impl Future<Output = Result<String, ServerFnError>> + Send;
 }
+
+/// A mocked request type that can be used in place of the actual server request,
+/// when compiling for the browser.
+pub struct BrowserMockReq;
+
+impl Req for BrowserMockReq {
+    fn as_query(&self) -> Option<&str> {
+        unreachable!()
+    }
+
+    fn try_into_bytes(self) -> impl Future<Output = Result<Bytes, ServerFnError>> + Send {
+        async { unreachable!() }
+    }
+
+    fn try_into_string(self) -> impl Future<Output = Result<String, ServerFnError>> + Send {
+        async { unreachable!() }
+    }
+}

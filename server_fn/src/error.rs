@@ -1,6 +1,7 @@
 use core::fmt::{self, Display};
 
 // Define a new type that wraps the unit type `()`
+#[derive(Debug)]
 pub struct UnitDisplay(());
 
 // Implement `Display` for `UnitDisplay`

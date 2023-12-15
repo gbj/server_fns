@@ -26,6 +26,9 @@ where
 
     async fn try_into_string(self) -> Result<String, ServerFnError> {
         let bytes = self.try_into_bytes().await?;
-        String::from_utf8(bytes.to_vec()).map_err(|e| ServerFnError::Deserialization(e.to_string()))
+        let body = String::from_utf8(bytes.to_vec())
+            .map_err(|e| ServerFnError::Deserialization(e.to_string()));
+        println!("{body:?}");
+        body
     }
 }
