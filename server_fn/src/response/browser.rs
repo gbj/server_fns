@@ -2,9 +2,20 @@ use crate::error::ServerFnError;
 
 use super::ClientRes;
 use bytes::Bytes;
+use futures::{Stream, StreamExt};
 pub use gloo_net::http::Response;
+use js_sys::{
+    wasm_bindgen::{JsCast, JsValue},
+    Reflect, Uint8Array,
+};
 use send_wrapper::SendWrapper;
-use std::future::Future;
+use std::{
+    future::Future,
+    pin::Pin,
+    task::{Context, Poll},
+};
+use wasm_bindgen_futures::JsFuture;
+use wasm_streams::ReadableStream;
 
 pub struct BrowserResponse(pub(crate) SendWrapper<Response>);
 
@@ -30,5 +41,19 @@ impl ClientRes for BrowserResponse {
                 .map(Bytes::from)
                 .map_err(|e| ServerFnError::Deserialization(e.to_string()))
         })
+    }
+
+    fn try_into_stream(self) -> Result<impl Stream<Item = Bytes> + Send + 'static, ServerFnError> {
+        let stream = ReadableStream::from_raw(self.0.body().unwrap())
+            .into_stream()
+            .map(|data| {
+                let data = data.unwrap().unchecked_into::<Uint8Array>();
+                let mut buf = Vec::new();
+                let length = data.length();
+                buf.resize(length as usize, 0);
+                data.copy_to(&mut buf);
+                Bytes::from(buf)
+            });
+        Ok(SendWrapper::new(stream))
     }
 }

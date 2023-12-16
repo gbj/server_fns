@@ -46,11 +46,25 @@ rkyv = { version = "0.7", features = [
 # client
 gloo-net = { version = "0.5", optional = true }
 js-sys = { version = "0.3", optional = true }
+wasm-bindgen-futures = { version = "0.4", optional = true }
+wasm-streams = { version = "0.4", optional = true }
+web-sys = { version = "0.3", optional = true, features = [
+  "console",
+  "ReadableStream",
+  "ReadableStreamDefaultReader",
+] }
 
 [features]
 actix = ["dep:actix-web", "dep:send_wrapper"]
 axum = ["dep:axum", "dep:http", "dep:hyper", "dep:http-body-util"]
-browser = ["dep:gloo-net", "dep:js-sys", "dep:send_wrapper"]
+browser = [
+  "dep:gloo-net",
+  "dep:js-sys",
+  "dep:send_wrapper",
+  "dep:web-sys",
+  "dep:wasm-streams",
+  "dep:wasm-bindgen-futures",
+]
 json = ["dep:serde_json"]
 url = ["dep:serde_qs"]
 cbor = ["dep:ciborium"]

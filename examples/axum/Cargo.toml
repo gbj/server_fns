@@ -16,6 +16,7 @@ simple_logger = "4"
 tokio = { version = "1.25.0", features = [
     "rt-multi-thread",
     "macros",
+    "time",
 ], optional = true }
 tower = { version = "0.4.13", optional = true }
 tower-http = { version = "0.5", features = ["fs"], optional = true }
@@ -39,6 +40,7 @@ server_fns = { path = "/Users/gjohnston/Documents/Projects/server_fns/server_fn"
     "cbor",
 ] }
 server_fn_macro_default = { path = "/Users/gjohnston/Documents/Projects/server_fns/server_fn_macro_default" }
+tokio-stream = { version = "0.1.14", optional = true, features = ["time"] }
 
 [features]
 hydrate = ["tachys/web"]
@@ -51,6 +53,7 @@ ssr = [
     "dep:hyper",
     "server_fns/axum",
     "server_fn_macro_default/ssr",
+    "dep:tokio-stream",
 ]
 
 # Defines a size-optimized profile for the WASM bundle in release mode

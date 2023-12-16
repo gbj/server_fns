@@ -17,6 +17,9 @@ use futures::Future;
 #[cfg(feature = "url")]
 pub use url::*;
 
+mod stream;
+pub use stream::*;
+
 pub trait FromReq<Request, Encoding>
 where
     Self: Sized,

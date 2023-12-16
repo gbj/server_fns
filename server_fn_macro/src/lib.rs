@@ -301,6 +301,9 @@ pub fn server_macro_impl(
         }
     };
 
+    // only emit the dummy (unmodified server-only body) for the server build
+    let dummy = cfg!(feature = "ssr").then_some(dummy);
+
     Ok(quote::quote! {
         #args_docs
         #docs
@@ -609,7 +612,7 @@ impl ServerFnBody {
 fn codec_ident(server_fn_path: Option<&Path>, ident: Ident) -> TokenStream2 {
     if let Some(server_fn_path) = server_fn_path {
         let str = ident.to_string();
-        if ["GetUrl", "PostUrl", "Cbor", "Json", "Rkyv"].contains(&str.as_str()) {
+        if ["GetUrl", "PostUrl", "Cbor", "Json", "Rkyv", "Streaming"].contains(&str.as_str()) {
             return quote! {
                 #server_fn_path::codec::#ident
             };

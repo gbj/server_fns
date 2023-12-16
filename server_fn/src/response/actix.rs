@@ -2,6 +2,7 @@ use super::Res;
 use crate::error::ServerFnError;
 use actix_web::{http::header, http::StatusCode, HttpResponse};
 use bytes::Bytes;
+use futures::Stream;
 use send_wrapper::SendWrapper;
 
 pub struct ActixResponse(pub(crate) SendWrapper<HttpResponse>);
@@ -29,5 +30,12 @@ impl Res for ActixResponse {
         ActixResponse(SendWrapper::new(
             HttpResponse::build(StatusCode::INTERNAL_SERVER_ERROR).body(err.to_string()),
         ))
+    }
+
+    fn try_from_stream(
+        content_type: &str,
+        data: impl Stream<Item = Bytes>,
+    ) -> Result<Self, ServerFnError> {
+        todo!()
     }
 }
