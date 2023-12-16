@@ -61,6 +61,8 @@ pub fn server_macro_impl(
     let prefix = prefix.unwrap_or_else(|| Literal::string(default_path));
     let fn_path = fn_path.unwrap_or_else(|| Literal::string(""));
     let input = input.unwrap_or_else(|| syn::parse_quote!(PostUrl));
+    let input_is_rkyv = input == "Rkyv";
+    let input_is_multipart = input == "MultipartFormData";
     let input = codec_ident(server_fn_path.as_ref(), input);
     let output = output.unwrap_or_else(|| syn::parse_quote!(Json));
     let output = codec_ident(server_fn_path.as_ref(), output);
@@ -140,6 +142,34 @@ pub fn server_macro_impl(
             FnArg::Typed(t) => Some(&t.pat),
         })
         .collect::<Vec<_>>();
+
+    // if there's exactly one field, impl From<T> for the struct
+    let first_field = body
+        .inputs
+        .iter()
+        .filter_map(|f| match f {
+            FnArg::Receiver(_) => None,
+            FnArg::Typed(t) => Some((&t.pat, &t.ty)),
+        })
+        .next();
+    let from_impl = (body.inputs.len() == 1 && first_field.is_some()).then(|| {
+        let field = first_field.unwrap();
+        let (name, ty) = field;
+        quote! {
+            impl From<#struct_name> for #ty {
+                fn from(value: #struct_name) -> Self {
+                    let #struct_name { #name } = value;
+                    #name
+                }
+            }
+
+            impl From<#ty> for #struct_name {
+                fn from(#name: #ty) -> Self {
+                    #struct_name { #name }
+                }
+            }
+        }
+    });
 
     // check output type
     let output_arrow = body.output_arrow;
@@ -251,9 +281,20 @@ pub fn server_macro_impl(
     };
 
     // TODO rkyv derives
-    let derives = quote! {
-        #server_fn_path::serde::Serialize, #server_fn_path::serde::Deserialize
+    let derives = if input_is_multipart {
+        quote! {}
+    } else if input_is_rkyv {
+        todo!("implement derives for Rkyv")
+    } else {
+        quote! {
+            Clone, #server_fn_path::serde::Serialize, #server_fn_path::serde::Deserialize
+        }
     };
+    let serde_path = (!input_is_multipart && !input_is_rkyv).then(|| {
+        quote! {
+            #[serde(crate = #serde_path)]
+        }
+    });
 
     // TODO reqwest
     let client = quote! {
@@ -307,11 +348,13 @@ pub fn server_macro_impl(
     Ok(quote::quote! {
         #args_docs
         #docs
-        #[derive(Clone, Debug, #derives)]
-        #[serde(crate = #serde_path)]
+        #[derive(Debug, #derives)]
+        #serde_path
         pub struct #struct_name {
             #(#fields),*
         }
+
+        #from_impl
 
         impl #server_fn_path::ServerFn for #struct_name {
             // TODO prefix
@@ -612,7 +655,17 @@ impl ServerFnBody {
 fn codec_ident(server_fn_path: Option<&Path>, ident: Ident) -> TokenStream2 {
     if let Some(server_fn_path) = server_fn_path {
         let str = ident.to_string();
-        if ["GetUrl", "PostUrl", "Cbor", "Json", "Rkyv", "Streaming"].contains(&str.as_str()) {
+        if [
+            "GetUrl",
+            "PostUrl",
+            "Cbor",
+            "Json",
+            "Rkyv",
+            "Streaming",
+            "MultipartFormData",
+        ]
+        .contains(&str.as_str())
+        {
             return quote! {
                 #server_fn_path::codec::#ident
             };

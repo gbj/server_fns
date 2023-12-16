@@ -5,10 +5,29 @@ use bytes::Bytes;
 pub use gloo_net::http::Request;
 use js_sys::Uint8Array;
 use send_wrapper::SendWrapper;
+use web_sys::FormData;
 
+#[derive(Debug)]
 pub struct BrowserRequest(pub(crate) SendWrapper<Request>);
 
+impl From<Request> for BrowserRequest {
+    fn from(value: Request) -> Self {
+        Self(SendWrapper::new(value))
+    }
+}
+
+#[derive(Debug)]
+pub struct BrowserFormData(pub(crate) SendWrapper<FormData>);
+
+impl From<FormData> for BrowserFormData {
+    fn from(value: FormData) -> Self {
+        Self(SendWrapper::new(value))
+    }
+}
+
 impl ClientReq for BrowserRequest {
+    type FormData = BrowserFormData;
+
     fn try_new_get(path: &str, content_type: &str, query: &str) -> Result<Self, ServerFnError> {
         let mut url = path.to_owned();
         url.push('?');
@@ -44,6 +63,15 @@ impl ClientReq for BrowserRequest {
                 // TODO 'Accept' header
                 .header("Content-Type", content_type)
                 .body(body)
+                .map_err(|e| ServerFnError::Request(e.to_string()))?,
+        )))
+    }
+
+    fn try_new_multipart(path: &str, body: Self::FormData) -> Result<Self, ServerFnError> {
+        Ok(Self(SendWrapper::new(
+            Request::post(path)
+                // TODO 'Accept' header
+                .body(body.0.take())
                 .map_err(|e| ServerFnError::Request(e.to_string()))?,
         )))
     }

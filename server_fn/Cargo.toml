@@ -22,10 +22,11 @@ once_cell = "1"
 actix-web = { version = "4", optional = true }
 
 # axum
-axum = { version = "0.7", optional = true }
+axum = { version = "0.7", optional = true, features = ["multipart"] }
 
 ## input encodings 
 serde_qs = { version = "0.12", optional = true }
+multer = { version = "3", optional = true }
 
 ## output encodings 
 # serde 
@@ -66,6 +67,7 @@ browser = [
   "dep:wasm-bindgen-futures",
 ]
 json = ["dep:serde_json"]
+multipart = ["dep:multer"]
 url = ["dep:serde_qs"]
 cbor = ["dep:ciborium"]
 rkyv = ["dep:rkyv"]

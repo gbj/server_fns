@@ -16,6 +16,7 @@ use std::{
 };
 use wasm_bindgen_futures::JsFuture;
 use wasm_streams::ReadableStream;
+use web_sys::FormData;
 
 pub struct BrowserResponse(pub(crate) SendWrapper<Response>);
 

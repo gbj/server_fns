@@ -88,6 +88,10 @@ where
             Ok(res)
         }
     }
+
+    fn url() -> &'static str {
+        Self::PATH
+    }
 }
 
 #[doc(hidden)]

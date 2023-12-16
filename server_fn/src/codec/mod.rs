@@ -17,6 +17,11 @@ use futures::Future;
 #[cfg(feature = "url")]
 pub use url::*;
 
+#[cfg(feature = "multipart")]
+mod multipart;
+#[cfg(feature = "multipart")]
+pub use multipart::*;
+
 mod stream;
 pub use stream::*;
 

@@ -1,6 +1,7 @@
 use crate::{error::ServerFnError, request::Req};
 use actix_web::{FromRequest, HttpRequest};
 use bytes::Bytes;
+use futures::Stream;
 use send_wrapper::SendWrapper;
 use std::future::Future;
 
@@ -9,6 +10,13 @@ pub struct ActixRequest(pub(crate) SendWrapper<HttpRequest>);
 impl Req for ActixRequest {
     fn as_query(&self) -> Option<&str> {
         self.0.uri().query()
+    }
+
+    fn to_content_type(&self) -> Option<String> {
+        self.0
+            .headers()
+            .get("Content-Type")
+            .map(|h| String::from_utf8_lossy(h.as_bytes()).to_string())
     }
 
     fn try_into_bytes(self) -> impl Future<Output = Result<Bytes, ServerFnError>> + Send {
@@ -29,5 +37,11 @@ impl Req for ActixRequest {
                 .await
                 .map_err(|e| ServerFnError::Deserialization(e.to_string()))
         })
+    }
+
+    fn try_into_stream(
+        self,
+    ) -> Result<impl Stream<Item = Result<Bytes, ServerFnError>> + Send, ServerFnError> {
+        Ok(futures::stream::once(async { todo!() }))
     }
 }
