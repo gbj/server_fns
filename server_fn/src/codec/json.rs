@@ -8,7 +8,7 @@ use serde::Serialize;
 /// Pass arguments and receive responses as JSON in the body of a `POST` request.
 pub struct Json;
 
-impl super::Encoding for Json {
+impl Encoding for Json {
     const CONTENT_TYPE: &'static str = "application/json";
 }
 
