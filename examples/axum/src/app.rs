@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::time::Duration;
 
 use futures::channel::mpsc::unbounded;
@@ -9,6 +10,7 @@ use server_fns::{
     codec::{ByteStream, MultipartData},
     ServerFnError,
 };
+use tachys::tachydom::view::keyed::keyed;
 use tachys::{
     prelude::*,
     tachy_reaccy::spawn::spawn_local,
@@ -20,7 +22,8 @@ use tachys::{
         node_ref::NodeRef,
     },
 };
-use web_sys::FormData;
+use wasm_bindgen::JsCast;
+use web_sys::{FormData, HtmlFormElement};
 
 /* #[server]
 pub async fn server_fn_1(inp: i32) -> Result<i32, ServerFnError> {
@@ -60,11 +63,18 @@ pub async fn multipart_upload(data: MultipartData) -> Result<ByteStream, ServerF
     use futures::channel::mpsc::unbounded;
 
     let mut data = data.into_data().unwrap();
+    println!("\n\n{data:#?}\n\n");
+
     let (tx, rx) = unbounded();
     tokio::spawn(async move {
         while let Ok(Some(mut field)) = data.next_field().await {
+            println!("\n[NEXT FIELD]\n");
+            let name = field.name().unwrap_or_default().to_string();
+            println!("  [NAME] {name}");
             while let Ok(Some(chunk)) = field.chunk().await {
-                tx.unbounded_send(Bytes::from(format!("uploaded {} bytes\n", chunk.len())));
+                let len = chunk.len();
+                println!("      [CHUNK] {len}");
+                tx.unbounded_send(Bytes::from(format!("{name}<>{len}\n")));
             }
         }
     });
@@ -73,31 +83,80 @@ pub async fn multipart_upload(data: MultipartData) -> Result<ByteStream, ServerF
 }
 
 pub fn my_app() -> impl RenderHtml<Dom> {
+    let progress: RwSignal<HashMap<String, (u32, u32)>> = RwSignal::new(HashMap::new());
+    let input_ref = NodeRef::<Input>::new();
     let form_ref = NodeRef::<Form>::new();
-    let on_submit = move |ev: SubmitEvent| {
-        ev.prevent_default();
-        let form = form_ref.get().unwrap();
-        let form_data = FormData::new_with_form(&form).unwrap();
-        spawn_local(async move {
-            let mut stream = multipart_upload(form_data.into())
-                .await
-                .unwrap()
-                .into_inner();
-            while let Some(value) = stream.next().await {
-                tachys::tachydom::log(&String::from_utf8_lossy(value.as_ref()));
+    let on_submit =
+        move |ev: SubmitEvent| {
+            ev.prevent_default();
+            let form = form_ref.get().unwrap();
+            let form_data = FormData::new_with_form(&form).unwrap();
+
+            let files = input_ref.get().unwrap().files().unwrap();
+            let len = files.length();
+            let mut starting_files = HashMap::new();
+            for idx in 0..len {
+                let file = files.item(idx).unwrap();
+                starting_files.insert(file.name(), (0, file.size() as u32));
+                form_data.append_with_blob(&file.name(), &file);
             }
-        })
+            progress.set(starting_files);
+
+            spawn_local(async move {
+                let mut stream = multipart_upload(form_data.into())
+                    .await
+                    .unwrap()
+                    .into_inner();
+                while let Some(value) = stream.next().await {
+                    tachys::tachydom::log(&format!("value = {value:?}"));
+                    for line in String::from_utf8_lossy(value.as_ref()).lines() {
+                        let (name, bytes) = line.split_once("<>").unwrap();
+                        let bytes = bytes.parse::<u32>().unwrap();
+                        progress.update(|map| {
+                            let entry = map.get_mut(name).unwrap();
+                            entry.0 += bytes;
+                        });
+                    }
+                }
+            })
+        };
+
+    let progress = move || {
+        keyed(
+            progress.get(),
+            |(name, _)| name.to_owned(),
+            move |(name, (current, max))| {
+                let current = Memo::new({
+                    let name = name.clone();
+                    move |_| {
+                        progress
+                            .with(|prog| prog.get(&name).map(|(curr, _)| *curr))
+                            .unwrap_or(0)
+                    }
+                });
+                view! {
+                    <div>
+                        <label>
+                            {name}
+                            <progress max=max.to_string() value=move || current.get().to_string()/>
+                        </label>
+                    </div>
+                }
+            },
+        )
     };
 
     view! {
-            <form on:submit=on_submit node_ref=form_ref
+            <form on:submit=on_submit
+                node_ref=form_ref
                 method="post"
                 enctype="multipart/form-data"
                 action=MultipartUpload::url()
             >
-                <input type="file" name="file_to_upload"/>
+                <input type="file" node_ref=input_ref multiple/>
                 <button>"Upload"</button>
             </form>
+            {progress}
     /*         <button on:click=|_| {
                 spawn_local(async move {
                     let mut stream = streaming().await.unwrap().into_inner();

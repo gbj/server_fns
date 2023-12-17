@@ -42,7 +42,12 @@ server_fns = { path = "../../server_fn", features = [
 ] }
 server_fn_macro_default = { path = "../../server_fn_macro_default" }
 tokio-stream = { version = "0.1.14", optional = true, features = ["time"] }
-web-sys = { version = "0.3", features = ["FileList", "FormData"] }
+web-sys = { version = "0.3", features = [
+    "Blob",
+    "File",
+    "FileList",
+    "FormData",
+] }
 bytes = "1.5.0"
 
 [features]
