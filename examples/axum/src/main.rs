@@ -62,7 +62,7 @@ async fn main() {
 
     // run our app with hyper
     // `axum::Server` is a re-export of `hyper::Server`
-    let addr = "127.0.0.1:8080";
+    let addr = "127.0.0.1:3000";
     log::info!("listening on http://{}", &addr);
     let listener = TcpListener::bind(addr).await.unwrap();
     axum::serve(listener, app.into_make_service())

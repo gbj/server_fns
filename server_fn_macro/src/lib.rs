@@ -662,6 +662,7 @@ fn codec_ident(server_fn_path: Option<&Path>, ident: Ident) -> TokenStream2 {
             "Json",
             "Rkyv",
             "Streaming",
+            "StreamingText",
             "MultipartFormData",
         ]
         .contains(&str.as_str())

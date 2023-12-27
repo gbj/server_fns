@@ -4,6 +4,7 @@ use std::time::Duration;
 use futures::channel::mpsc::unbounded;
 use futures::StreamExt;
 use server_fn_macro_default::server;
+use server_fns::codec::TextStream;
 use server_fns::request::browser::BrowserFormData;
 use server_fns::ServerFn;
 use server_fns::{
@@ -57,8 +58,8 @@ pub async fn streaming() -> Result<ByteStream, ServerFnError> {
     Ok(ByteStream::from(stream.map(|n| n.to_string())))
 } */
 
-#[server(input = MultipartFormData, output = Streaming)]
-pub async fn multipart_upload(data: MultipartData) -> Result<ByteStream, ServerFnError> {
+#[server(input = MultipartFormData, output = StreamingText)]
+pub async fn multipart_upload(data: MultipartData) -> Result<TextStream, ServerFnError> {
     use bytes::Bytes;
     use futures::channel::mpsc::unbounded;
 
@@ -74,71 +75,67 @@ pub async fn multipart_upload(data: MultipartData) -> Result<ByteStream, ServerF
             while let Ok(Some(chunk)) = field.chunk().await {
                 let len = chunk.len();
                 println!("      [CHUNK] {len}");
-                tx.unbounded_send(Bytes::from(format!("{name}<>{len}\n")));
+                tx.unbounded_send(format!("{name}<>{len}\n"));
             }
         }
     });
 
-    Ok(ByteStream::from(rx))
+    Ok(TextStream::from(rx))
 }
 
 pub fn my_app() -> impl RenderHtml<Dom> {
     let progress: RwSignal<HashMap<String, (u32, u32)>> = RwSignal::new(HashMap::new());
     let input_ref = NodeRef::<Input>::new();
     let form_ref = NodeRef::<Form>::new();
-    let on_submit =
-        move |ev: SubmitEvent| {
-            ev.prevent_default();
-            let form = form_ref.get().unwrap();
-            let form_data = FormData::new_with_form(&form).unwrap();
+    let on_submit = move |ev: SubmitEvent| {
+        ev.prevent_default();
+        let form = form_ref.get().unwrap();
+        let form_data = FormData::new_with_form(&form).unwrap();
 
-            let files = input_ref.get().unwrap().files().unwrap();
-            let len = files.length();
-            let mut starting_files = HashMap::new();
-            for idx in 0..len {
-                let file = files.item(idx).unwrap();
-                starting_files.insert(file.name(), (0, file.size() as u32));
-                form_data.append_with_blob(&file.name(), &file);
-            }
-            progress.set(starting_files);
+        let files = input_ref.get().unwrap().files().unwrap();
+        let len = files.length();
+        let mut starting_files = HashMap::new();
+        for idx in 0..len {
+            let file = files.item(idx).unwrap();
+            starting_files.insert(file.name(), (0, file.size() as u32));
+            form_data.append_with_blob(&file.name(), &file);
+        }
+        progress.set(starting_files);
 
-            spawn_local(async move {
-                let mut stream = multipart_upload(form_data.into())
-                    .await
-                    .unwrap()
-                    .into_inner();
-                while let Some(value) = stream.next().await {
-                    tachys::tachydom::log(&format!("value = {value:?}"));
-                    for line in String::from_utf8_lossy(value.as_ref()).lines() {
-                        let (name, bytes) = line.split_once("<>").unwrap();
-                        let bytes = bytes.parse::<u32>().unwrap();
-                        progress.update(|map| {
-                            let entry = map.get_mut(name).unwrap();
-                            entry.0 += bytes;
-                        });
-                    }
+        spawn_local(async move {
+            let mut stream = multipart_upload(form_data.into())
+                .await
+                .unwrap()
+                .into_inner();
+            while let Some(value) = stream.next().await {
+                tachys::tachydom::log(&format!("value = {value:?}"));
+                for line in value.unwrap().lines() {
+                    let (name, bytes) = line.split_once("<>").unwrap();
+                    let bytes = bytes.parse::<u32>().unwrap();
+                    progress.update(|map| {
+                        let entry = map.get_mut(name).unwrap();
+                        entry.0 += bytes;
+                    });
                 }
-            })
-        };
+            }
+        })
+    };
 
     let progress = move || {
         keyed(
             progress.get(),
             |(name, _)| name.to_owned(),
             move |(name, (current, max))| {
-                let current = Memo::new({
-                    let name = name.clone();
-                    move |_| {
-                        progress
-                            .with(|prog| prog.get(&name).map(|(curr, _)| *curr))
-                            .unwrap_or(0)
-                    }
-                });
                 view! {
                     <div>
                         <label>
-                            {name}
-                            <progress max=max.to_string() value=move || current.get().to_string()/>
+                            {name.clone()}
+                            <progress max=max.to_string() value=move || {
+                                progress
+                                    .with(|prog| prog.get(&name).map(|(curr, _)| *curr))
+                                    .unwrap_or(0)
+                                    .to_string()
+                            }/>
                         </label>
                     </div>
                 }
