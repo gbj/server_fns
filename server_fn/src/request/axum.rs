@@ -3,7 +3,6 @@ use axum::body::{Body, Bytes};
 use futures::{Stream, StreamExt};
 use http::{header::CONTENT_TYPE, Request};
 use http_body_util::BodyExt;
-use std::fmt::Display;
 
 impl Req for Request<Body> {
     fn as_query(&self) -> Option<&str> {

@@ -4,19 +4,10 @@ use super::ClientRes;
 use bytes::Bytes;
 use futures::{Stream, StreamExt};
 pub use gloo_net::http::Response;
-use js_sys::{
-    wasm_bindgen::{JsCast, JsValue},
-    Reflect, Uint8Array,
-};
+use js_sys::{wasm_bindgen::JsCast, Uint8Array};
 use send_wrapper::SendWrapper;
-use std::{
-    future::Future,
-    pin::Pin,
-    task::{Context, Poll},
-};
-use wasm_bindgen_futures::JsFuture;
+use std::future::Future;
 use wasm_streams::ReadableStream;
-use web_sys::FormData;
 
 pub struct BrowserResponse(pub(crate) SendWrapper<Response>);
 

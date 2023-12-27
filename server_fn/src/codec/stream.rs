@@ -1,10 +1,9 @@
 use std::pin::Pin;
 
-use super::{Encoding, FromReq, FromRes};
+use super::{Encoding, FromRes};
 use crate::error::ServerFnError;
-use crate::request::{ClientReq, Req};
 use crate::response::{ClientRes, Res};
-use crate::{IntoReq, IntoRes};
+use crate::IntoRes;
 use bytes::Bytes;
 use futures::{Stream, StreamExt};
 
