@@ -19,3 +19,5 @@ convert_case = "0.6.0"
 [features]
 nightly = []
 ssr = []
+actix = []
+axum = []

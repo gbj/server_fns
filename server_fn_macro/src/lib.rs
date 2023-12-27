@@ -8,7 +8,7 @@
 
 use convert_case::{Case, Converter};
 use proc_macro2::{Literal, Span, TokenStream as TokenStream2};
-use proc_macro_error::abort;
+use proc_macro_error::{abort, abort_call_site};
 use quote::{quote, quote_spanned, ToTokens};
 use syn::{
     parse::{Parse, ParseStream},
@@ -302,23 +302,35 @@ pub fn server_macro_impl(
     };
 
     // TODO Actix etc
-    let req = if cfg!(feature = "ssr") {
-        quote! {
-            ::axum::http::Request<::axum::body::Body>
-        }
-    } else {
+    let req = if !cfg!(feature = "ssr") {
         quote! {
             #server_fn_path::request::BrowserMockReq
         }
-    };
-    let res = if cfg!(feature = "ssr") {
+    } else if cfg!(feature = "axum") {
         quote! {
-            ::axum::http::Response<::axum::body::Body>
+            ::axum::http::Request<::axum::body::Body>
+        }
+    } else if cfg!(feature = "actix") {
+        quote! {
+            ::actix_web::HttpRequest
         }
     } else {
+        abort_call_site!("If the `ssr` feature is enabled, either the `actix` or `axum` features should also be enabled.")
+    };
+    let res = if !cfg!(feature = "ssr") {
         quote! {
             #server_fn_path::response::BrowserMockRes
         }
+    } else if cfg!(feature = "axum") {
+        quote! {
+            ::axum::http::Response<::axum::body::Body>
+        }
+    } else if cfg!(feature = "actix") {
+        quote! {
+            ::actix_web::HttpResponse
+        }
+    } else {
+        abort_call_site!("If the `ssr` feature is enabled, either the `actix` or `axum` features should also be enabled.")
     };
 
     // generate path
