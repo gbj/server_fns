@@ -34,7 +34,7 @@ impl Res for ActixResponse {
 
     fn try_from_stream(
         content_type: &str,
-        data: impl Stream<Item = Bytes>,
+        data: impl Stream<Item = Result<Bytes, ServerFnError>>,
     ) -> Result<Self, ServerFnError> {
         todo!()
     }

@@ -39,3 +39,27 @@ pub mod browser {
         }
     }
 }
+
+#[cfg(feature = "reqwest")]
+pub mod reqwest {
+    use super::Client;
+    use crate::{error::ServerFnError, request::reqwest::CLIENT};
+    use futures::TryFutureExt;
+    use reqwest::{Request, Response};
+    use std::future::Future;
+
+    pub struct ReqwestClient;
+
+    impl Client for ReqwestClient {
+        type Request = Request;
+        type Response = Response;
+
+        fn send(
+            req: Self::Request,
+        ) -> impl Future<Output = Result<Self::Response, ServerFnError>> + Send {
+            CLIENT
+                .execute(req)
+                .map_err(|e| ServerFnError::Request(e.to_string()))
+        }
+    }
+}

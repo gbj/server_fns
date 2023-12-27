@@ -1,5 +1,7 @@
 use core::fmt::{self, Display};
 
+use thiserror::Error;
+
 // Define a new type that wraps the unit type `()`
 #[derive(Debug)]
 pub struct UnitDisplay(());
@@ -144,3 +146,58 @@ impl From<String> for ServerFnError<String> {
 /// A type tag for ServerFnError so we can special case it
 pub(crate) trait ServerFnErrorKind {}
 impl ServerFnErrorKind for ServerFnError {}
+
+/// Type for errors that can occur when using server functions.
+///
+/// Unlike [`ServerFnError`], this implements [`std::error::Error`]. This means
+/// it can be used in situations in which the `Error` trait is required, but it’s
+/// not possible to create a blanket implementation that converts other errors into
+/// this type.
+///
+/// [`ServerFnError`] and [`ServerFnErrorErr`] mutually implement [`From`], so
+/// it is easy to convert between the two types.
+#[derive(Error, Debug, Clone)]
+pub enum ServerFnErrorErr<E = UnitDisplay> {
+    #[error("internal error: {0}")]
+    WrappedServerError(E),
+    /// Error while trying to register the server function (only occurs in case of poisoned RwLock).
+    #[error("error while trying to register the server function: {0}")]
+    Registration(String),
+    /// Occurs on the client if there is a network error while trying to run function on server.
+    #[error("error reaching server to call server function: {0}")]
+    Request(String),
+    /// Occurs when there is an error while actually running the function on the server.
+    #[error("error running server function: {0}")]
+    ServerError(String),
+    /// Occurs on the client if there is an error deserializing the server's response.
+    #[error("error deserializing server function results: {0}")]
+    Deserialization(String),
+    /// Occurs on the client if there is an error serializing the server function arguments.
+    #[error("error serializing server function arguments: {0}")]
+    Serialization(String),
+    /// Occurs on the server if there is an error deserializing one of the arguments that's been sent.
+    #[error("error deserializing server function arguments: {0}")]
+    Args(String),
+    /// Occurs on the server if there's a missing argument.
+    #[error("missing argument {0}")]
+    MissingArg(String),
+    /// Occurs on the server if there is an error creating an HTTP response.
+    #[error("error creating response {0}")]
+    Response(String),
+}
+
+impl From<ServerFnError> for ServerFnErrorErr {
+    fn from(value: ServerFnError) -> Self {
+        match value {
+            ServerFnError::Registration(value) => ServerFnErrorErr::Registration(value),
+            ServerFnError::Request(value) => ServerFnErrorErr::Request(value),
+            ServerFnError::ServerError(value) => ServerFnErrorErr::ServerError(value),
+            ServerFnError::Deserialization(value) => ServerFnErrorErr::Deserialization(value),
+            ServerFnError::Serialization(value) => ServerFnErrorErr::Serialization(value),
+            ServerFnError::Args(value) => ServerFnErrorErr::Args(value),
+            ServerFnError::MissingArg(value) => ServerFnErrorErr::MissingArg(value),
+            ServerFnError::WrappedServerError(value) => ServerFnErrorErr::WrappedServerError(value),
+            ServerFnError::Response(value) => ServerFnErrorErr::Response(value),
+        }
+    }
+}

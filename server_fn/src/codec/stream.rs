@@ -34,10 +34,10 @@ where
     }
 } */
 
-pub struct ByteStream(Pin<Box<dyn Stream<Item = Bytes> + Send>>);
+pub struct ByteStream(Pin<Box<dyn Stream<Item = Result<Bytes, ServerFnError>> + Send>>);
 
 impl ByteStream {
-    pub fn into_inner(self) -> impl Stream<Item = Bytes> + Send {
+    pub fn into_inner(self) -> impl Stream<Item = Result<Bytes, ServerFnError>> + Send {
         self.0
     }
 }
@@ -48,7 +48,7 @@ where
     T: Into<Bytes>,
 {
     fn from(value: S) -> Self {
-        Self(Box::pin(value.map(|data| data.into())))
+        Self(Box::pin(value.map(|data| Ok(data.into()))))
     }
 }
 

@@ -55,6 +55,12 @@ web-sys = { version = "0.3", optional = true, features = [
   "ReadableStreamDefaultReader",
 ] }
 
+# reqwest client 
+reqwest = { version = "0.11", default-features = false, optional = true, features = [
+  "multipart",
+  "stream",
+] }
+
 [features]
 actix = ["dep:actix-web", "dep:send_wrapper"]
 axum = ["dep:axum", "dep:http", "dep:hyper", "dep:http-body-util"]
@@ -71,3 +77,6 @@ multipart = ["dep:multer"]
 url = ["dep:serde_qs"]
 cbor = ["dep:ciborium"]
 rkyv = ["dep:rkyv"]
+default-tls = ["reqwest/default-tls"]
+rustls = ["reqwest/rustls-tls"]
+reqwest = ["dep:http", "dep:reqwest"]

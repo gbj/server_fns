@@ -9,6 +9,8 @@ pub mod actix;
 pub mod axum;
 #[cfg(feature = "browser")]
 pub mod browser;
+#[cfg(feature = "reqwest")]
+pub mod reqwest;
 
 /// Represents a request as made by the client.
 pub trait ClientReq: Sized {

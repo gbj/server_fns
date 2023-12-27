@@ -4,6 +4,8 @@ pub mod actix;
 pub mod browser;
 #[cfg(feature = "axum")]
 pub mod http;
+#[cfg(feature = "reqwest")]
+pub mod reqwest;
 
 use crate::error::ServerFnError;
 use bytes::Bytes;
@@ -21,7 +23,7 @@ pub trait Res: Sized {
     /// Attempts to convert a stream of bytes into an HTTP response.
     fn try_from_stream(
         content_type: &str,
-        data: impl Stream<Item = Bytes> + Send + 'static,
+        data: impl Stream<Item = Result<Bytes, ServerFnError>> + Send + 'static,
     ) -> Result<Self, ServerFnError>;
 
     fn error_response(err: ServerFnError) -> Self;
@@ -36,7 +38,9 @@ pub trait ClientRes {
     fn try_into_bytes(self) -> impl Future<Output = Result<Bytes, ServerFnError>> + Send;
 
     /// Attempts to extract a binary stream from an HTTP response.
-    fn try_into_stream(self) -> Result<impl Stream<Item = Bytes> + Send + 'static, ServerFnError>;
+    fn try_into_stream(
+        self,
+    ) -> Result<impl Stream<Item = Result<Bytes, ServerFnError>> + Send + 'static, ServerFnError>;
 }
 
 /// A mocked response type that can be used in place of the actual server response,
@@ -58,7 +62,7 @@ impl Res for BrowserMockRes {
 
     fn try_from_stream(
         content_type: &str,
-        data: impl Stream<Item = Bytes>,
+        data: impl Stream<Item = Result<Bytes, ServerFnError>>,
     ) -> Result<Self, ServerFnError> {
         todo!()
     }

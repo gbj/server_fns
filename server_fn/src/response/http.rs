@@ -1,6 +1,4 @@
-use std::io;
-
-use crate::error::ServerFnError;
+use crate::error::{ServerFnError, ServerFnErrorErr};
 
 use super::Res;
 use axum::body::Body;
@@ -29,9 +27,9 @@ impl Res for Response<Body> {
 
     fn try_from_stream(
         content_type: &str,
-        data: impl Stream<Item = Bytes> + Send + 'static,
+        data: impl Stream<Item = Result<Bytes, ServerFnError>> + Send + 'static,
     ) -> Result<Self, ServerFnError> {
-        let body = Body::from_stream(data.map(|n| Ok::<Bytes, io::Error>(n)));
+        let body = Body::from_stream(data.map(|n| n.map_err(ServerFnErrorErr::from)));
         let builder = http::Response::builder();
         builder
             .status(200)

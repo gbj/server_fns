@@ -44,7 +44,10 @@ impl ClientRes for BrowserResponse {
         })
     }
 
-    fn try_into_stream(self) -> Result<impl Stream<Item = Bytes> + Send + 'static, ServerFnError> {
+    fn try_into_stream(
+        self,
+    ) -> Result<impl Stream<Item = Result<Bytes, ServerFnError>> + Send + 'static, ServerFnError>
+    {
         let stream = ReadableStream::from_raw(self.0.body().unwrap())
             .into_stream()
             .map(|data| {
@@ -53,7 +56,7 @@ impl ClientRes for BrowserResponse {
                 let length = data.length();
                 buf.resize(length as usize, 0);
                 data.copy_to(&mut buf);
-                Bytes::from(buf)
+                Ok(Bytes::from(buf))
             });
         Ok(SendWrapper::new(stream))
     }
