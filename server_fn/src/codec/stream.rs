@@ -11,7 +11,6 @@ use futures::{Stream, StreamExt};
 pub struct Streaming;
 
 impl Encoding for Streaming {
-    // uhhh TODO
     const CONTENT_TYPE: &'static str = "application/octet-stream";
 }
 
