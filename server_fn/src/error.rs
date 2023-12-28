@@ -2,12 +2,13 @@ use core::fmt::{self, Display};
 
 use thiserror::Error;
 
-// Define a new type that wraps the unit type `()`
+/// An empty value indicating that there is no custom error type associated
+/// with this server function.
 #[derive(Debug)]
-pub struct UnitDisplay(());
+pub struct NoCustomError(());
 
-// Implement `Display` for `UnitDisplay`
-impl fmt::Display for UnitDisplay {
+// Implement `Display` for `NoCustomError`
+impl fmt::Display for NoCustomError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Unit Type Displayed")
     }
@@ -23,58 +24,75 @@ pub struct WrapError<T>(pub T);
 macro_rules! server_fn_error {
     () => {{
         use $crate::{ViaError, WrapError};
-        (&&&&&WrapError(())).into_server_error()
+        (&&&&&WrapError(())).to_server_error()
     }};
     ($err:expr) => {{
         use $crate::error::{ViaError, WrapError};
         match $err {
-            error => (&&&&&WrapError(error)).into_server_error(),
+            error => (&&&&&WrapError(error)).to_server_error(),
         }
     }};
 }
+
 /// This trait serves as the conversion method between a variety of types
-/// and ServerFnError
+/// and [`ServerFnError`].
 pub trait ViaError<E> {
-    fn into_server_error(&self) -> ServerFnError<E>;
+    fn to_server_error(&self) -> ServerFnError<E>;
 }
-/// This impl should catch if you feed it a ServerFnError already.
+
+// This impl should catch if you fed it a [`ServerFnError`] already.
 impl<E: ServerFnErrorKind + std::error::Error + Clone> ViaError<E>
     for &&&&WrapError<ServerFnError<E>>
 {
-    fn into_server_error(&self) -> ServerFnError<E> {
+    fn to_server_error(&self) -> ServerFnError<E> {
         self.0.clone()
     }
 }
-/// This impl should catch passing () or nothing to server_fn_error
+
+// A type tag for ServerFnError so we can special case it
+pub(crate) trait ServerFnErrorKind {}
+
+impl ServerFnErrorKind for ServerFnError {}
+
+// This impl should catch passing () or nothing to server_fn_error
 impl ViaError<()> for &&&WrapError<()> {
-    fn into_server_error(&self) -> ServerFnError<()> {
+    fn to_server_error(&self) -> ServerFnError<()> {
         ServerFnError::WrappedServerError(self.0.clone())
     }
 }
-/// This impl will catch any type that implements any type that impls
-/// Error and Clone, so that it can be wrapped into ServerFnError
+
+// This impl will catch any type that implements any type that impls
+// Error and Clone, so that it can be wrapped into ServerFnError
 impl<E: std::error::Error + Clone> ViaError<E> for &&WrapError<E> {
-    fn into_server_error(&self) -> ServerFnError<E> {
+    fn to_server_error(&self) -> ServerFnError<E> {
         ServerFnError::WrappedServerError(self.0.clone())
     }
 }
-/// If it doesn't impl Error, but does impl Display and Clone,
-/// we can still wrap it in String form
+
+// If it doesn't impl Error, but does impl Display and Clone,
+// we can still wrap it in String form
 impl<E: Display + Clone> ViaError<E> for &WrapError<E> {
-    fn into_server_error(&self) -> ServerFnError<E> {
+    fn to_server_error(&self) -> ServerFnError<E> {
         ServerFnError::WrappedServerError(self.0.clone())
     }
 }
-/// This is what happens if someone tries to pass in something that does
-/// not meet the above criteria
+
+// This is what happens if someone tries to pass in something that does
+// not meet the above criteria
 impl<E> ViaError<E> for WrapError<E> {
-    fn into_server_error(&self) -> ServerFnError<E> {
-        panic!("This does not Implement Error+Clone or Display+Clone. Please do that")
+    #[track_caller]
+    fn to_server_error(&self) -> ServerFnError<E> {
+        panic!("At {}, you call `to_server_error()` or use  `server_fn_error!` with a value that does not implement `Clone` and either `Error` or `Display`.", std::panic::Location::caller());
     }
 }
-/// The Error type returned by ServerFnErrors
+
+/// Type for errors that can occur when using server functions.
+///
+/// Unlike [`ServerFnErrorErr`], this does not implement [`Error`](std::error::Error).
+/// This means that other error types can easily be converted into it using the
+/// `?` operator.
 #[derive(Debug, Clone)]
-pub enum ServerFnError<E = UnitDisplay> {
+pub enum ServerFnError<E = NoCustomError> {
     WrappedServerError(E),
     /// Error while trying to register the server function (only occurs in case of poisoned RwLock).
     Registration(String),
@@ -93,6 +111,7 @@ pub enum ServerFnError<E = UnitDisplay> {
     /// Occurs on the server if there's a missing argument.
     MissingArg(String),
 }
+
 impl std::fmt::Display for ServerFnError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
@@ -129,23 +148,15 @@ where
         }
     }
 }
-/// We provide a conversion from a regular String to ServerFnError for you,
-/// so you should be able to do this `fn function() -> Result<(), String>`
-/// and handle that with `function()?`
+
+// We provide a conversion from a regular String to ServerFnError for you,
+// so you should be able to do this `fn function() -> Result<(), String>`
+// and handle that with `function()?`
 impl From<String> for ServerFnError<String> {
     fn from(err: String) -> Self {
         server_fn_error!(err)
     }
 }
-
-//impl<E: std::error::Error + Clone> From<E> for ServerFnError<E> {
-//    fn from(err: E) -> Self {
-//        server_fn_error!(err)
-//    }
-//}
-/// A type tag for ServerFnError so we can special case it
-pub(crate) trait ServerFnErrorKind {}
-impl ServerFnErrorKind for ServerFnError {}
 
 /// Type for errors that can occur when using server functions.
 ///
@@ -157,7 +168,7 @@ impl ServerFnErrorKind for ServerFnError {}
 /// [`ServerFnError`] and [`ServerFnErrorErr`] mutually implement [`From`], so
 /// it is easy to convert between the two types.
 #[derive(Error, Debug, Clone)]
-pub enum ServerFnErrorErr<E = UnitDisplay> {
+pub enum ServerFnErrorErr<E = NoCustomError> {
     #[error("internal error: {0}")]
     WrappedServerError(E),
     /// Error while trying to register the server function (only occurs in case of poisoned RwLock).
