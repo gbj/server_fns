@@ -1,13 +1,13 @@
 use crate::{error::ServerFnError, request::ClientReq, response::ClientRes};
 use std::future::Future;
 
-pub trait Client {
-    type Request: ClientReq + Send;
-    type Response: ClientRes + Send;
+pub trait Client<CustErr> {
+    type Request: ClientReq<CustErr> + Send;
+    type Response: ClientRes<CustErr> + Send;
 
     fn send(
         req: Self::Request,
-    ) -> impl Future<Output = Result<Self::Response, ServerFnError>> + Send;
+    ) -> impl Future<Output = Result<Self::Response, ServerFnError<CustErr>>> + Send;
 }
 
 #[cfg(feature = "browser")]
@@ -21,13 +21,13 @@ pub mod browser {
 
     pub struct BrowserClient;
 
-    impl Client for BrowserClient {
+    impl<CustErr> Client<CustErr> for BrowserClient {
         type Request = BrowserRequest;
         type Response = BrowserResponse;
 
         fn send(
             req: Self::Request,
-        ) -> impl Future<Output = Result<Self::Response, ServerFnError>> + Send {
+        ) -> impl Future<Output = Result<Self::Response, ServerFnError<CustErr>>> + Send {
             SendWrapper::new(async move {
                 req.0
                     .take()
@@ -50,13 +50,13 @@ pub mod reqwest {
 
     pub struct ReqwestClient;
 
-    impl Client for ReqwestClient {
+    impl<CustErr> Client<CustErr> for ReqwestClient {
         type Request = Request;
         type Response = Response;
 
         fn send(
             req: Self::Request,
-        ) -> impl Future<Output = Result<Self::Response, ServerFnError>> + Send {
+        ) -> impl Future<Output = Result<Self::Response, ServerFnError<CustErr>>> + Send {
             CLIENT
                 .execute(req)
                 .map_err(|e| ServerFnError::Request(e.to_string()))

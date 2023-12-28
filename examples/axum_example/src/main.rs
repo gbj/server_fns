@@ -1,5 +1,3 @@
-#![feature(async_fn_in_trait)]
-
 use axum::{routing::get, Router};
 use server_fn_macro_default::server;
 use server_fns::error::ServerFnError;
@@ -17,8 +15,28 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
+// you can use the default setup
 #[server(endpoint = "/my_server_fn", input = GetUrl)]
 pub async fn my_server_fn(value: i32) -> Result<i32, ServerFnError> {
     println!("on server");
     Ok(value * 2)
+}
+
+// you can use any other error type
+#[server]
+pub async fn with_custom_error(value: i32) -> Result<i32, ServerFnError<std::io::Error>> {
+    std::fs::read("./test.txt")?;
+    Ok(value * 2)
+}
+
+// you can use a custom Result type alias
+mod custom_res {
+    use server_fn_macro_default::server;
+    use server_fns::ServerFnError;
+    type Result<T> = std::result::Result<T, ServerFnError>;
+
+    #[server]
+    pub async fn with_custom_result(value: i32) -> Result<i32> {
+        Ok(value * 2)
+    }
 }

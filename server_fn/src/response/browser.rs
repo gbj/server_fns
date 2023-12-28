@@ -11,8 +11,10 @@ use wasm_streams::ReadableStream;
 
 pub struct BrowserResponse(pub(crate) SendWrapper<Response>);
 
-impl ClientRes for BrowserResponse {
-    fn try_into_string(self) -> impl Future<Output = Result<String, ServerFnError>> + Send {
+impl<CustErr> ClientRes<CustErr> for BrowserResponse {
+    fn try_into_string(
+        self,
+    ) -> impl Future<Output = Result<String, ServerFnError<CustErr>>> + Send {
         // the browser won't send this async work between threads (because it's single-threaded)
         // so we can safely wrap this
         SendWrapper::new(async move {
@@ -23,7 +25,7 @@ impl ClientRes for BrowserResponse {
         })
     }
 
-    fn try_into_bytes(self) -> impl Future<Output = Result<Bytes, ServerFnError>> + Send {
+    fn try_into_bytes(self) -> impl Future<Output = Result<Bytes, ServerFnError<CustErr>>> + Send {
         // the browser won't send this async work between threads (because it's single-threaded)
         // so we can safely wrap this
         SendWrapper::new(async move {
@@ -37,8 +39,10 @@ impl ClientRes for BrowserResponse {
 
     fn try_into_stream(
         self,
-    ) -> Result<impl Stream<Item = Result<Bytes, ServerFnError>> + Send + 'static, ServerFnError>
-    {
+    ) -> Result<
+        impl Stream<Item = Result<Bytes, ServerFnError>> + Send + 'static,
+        ServerFnError<CustErr>,
+    > {
         let stream = ReadableStream::from_raw(self.0.body().unwrap())
             .into_stream()
             .map(|data| {

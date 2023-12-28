@@ -174,20 +174,13 @@ pub fn server_macro_impl(
     let output_arrow = body.output_arrow;
     let return_ty = body.return_ty;
 
-    let output_ty = 'output_ty: {
-        if let syn::Type::Path(pat) = &return_ty {
-            if pat.path.segments[0].ident == "Result" {
-                if let PathArguments::AngleBracketed(args) = &pat.path.segments[0].arguments {
-                    break 'output_ty &args.args[0];
-                }
-            }
+    let output_ty = output_type(&return_ty)?;
+    let error_ty = err_type(&return_ty)?;
+    let error_ty = error_ty.map(ToTokens::to_token_stream).unwrap_or_else(|| {
+        quote! {
+            #server_fn_path::error::NoCustomError
         }
-
-        return Err(syn::Error::new(
-            return_ty.span(),
-            "server functions should return Result<T, ServerFnError>",
-        ));
-    };
+    });
 
     // build server fn path
     let serde_path = server_fn_path.as_ref().map(|path| {
@@ -243,16 +236,16 @@ pub fn server_macro_impl(
     // run_body in the trait implementation
     let run_body = if cfg!(feature = "ssr") {
         quote! {
-            async fn run_body(self) -> Result<Self::Output, #server_fn_path::ServerFnError> {
+            async fn run_body(self) -> #return_ty {
                 let #struct_name { #(#field_names),* } = self;
                 #dummy_name(#(#field_names),*).await
             }
         }
     } else {
         quote! {
-            async fn run_body(self) -> Result<Self::Output, #server_fn_path::ServerFnError> {
-                let #struct_name { #(#field_names),* } = self;
-                todo!()
+            #[allow(unused_variables)]
+            async fn run_body(self) -> #return_ty {
+                unreachable!()
             }
         }
     };
@@ -377,6 +370,7 @@ pub fn server_macro_impl(
             type Output = #output_ty;
             type InputEncoding = #input;
             type OutputEncoding = #output;
+            type Error = #error_ty;
 
             #run_body
         }
@@ -387,6 +381,58 @@ pub fn server_macro_impl(
 
         #dummy
     })
+}
+
+fn output_type(return_ty: &Type) -> Result<&GenericArgument> {
+    if let syn::Type::Path(pat) = &return_ty {
+        if pat.path.segments[0].ident == "Result" {
+            if pat.path.segments.is_empty() {
+                panic!("{:#?}", pat.path);
+            } else if let PathArguments::AngleBracketed(args) = &pat.path.segments[0].arguments {
+                return Ok(&args.args[0]);
+            }
+        }
+    };
+
+    Err(syn::Error::new(
+        return_ty.span(),
+        "server functions should return Result<T, ServerFnError> or Result<T, ServerFnError<E>>",
+    ))
+}
+
+fn err_type(return_ty: &Type) -> Result<Option<&GenericArgument>> {
+    if let syn::Type::Path(pat) = &return_ty {
+        if pat.path.segments[0].ident == "Result" {
+            if let PathArguments::AngleBracketed(args) = &pat.path.segments[0].arguments {
+                // Result<T>
+                if args.args.len() == 1 {
+                    return Ok(None);
+                }
+                // Result<T, _>
+                else if let GenericArgument::Type(Type::Path(pat)) = &args.args[1] {
+                    if pat.path.segments[0].ident == "ServerFnError" {
+                        let args = &pat.path.segments[0].arguments;
+                        match args {
+                            // Result<T, ServerFnError>
+                            PathArguments::None => return Ok(None),
+                            // Result<T, ServerFnError<E>>
+                            PathArguments::AngleBracketed(args) => {
+                                if args.args.len() == 1 {
+                                    return Ok(Some(&args.args[0]));
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+            }
+        }
+    };
+
+    Err(syn::Error::new(
+        return_ty.span(),
+        "server functions should return Result<T, ServerFnError> or Result<T, ServerFnError<E>>",
+    ))
 }
 
 #[derive(Debug)]

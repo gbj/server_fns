@@ -24,10 +24,14 @@ fn get_server_url() -> &'static str {
         .expect("Call `set_root_url` before calling a server function.")
 }
 
-impl ClientReq for Request {
+impl<CustErr> ClientReq<CustErr> for Request {
     type FormData = Form;
 
-    fn try_new_get(path: &str, content_type: &str, query: &str) -> Result<Self, ServerFnError> {
+    fn try_new_get(
+        path: &str,
+        content_type: &str,
+        query: &str,
+    ) -> Result<Self, ServerFnError<CustErr>> {
         let url = format!("{}{}", get_server_url(), path);
         let mut url =
             Url::try_from(url.as_str()).map_err(|e| ServerFnError::Request(e.to_string()))?;
@@ -40,7 +44,11 @@ impl ClientReq for Request {
         Ok(req)
     }
 
-    fn try_new_post(path: &str, content_type: &str, body: String) -> Result<Self, ServerFnError> {
+    fn try_new_post(
+        path: &str,
+        content_type: &str,
+        body: String,
+    ) -> Result<Self, ServerFnError<CustErr>> {
         let url = format!("{}{}", get_server_url(), path);
         Ok(CLIENT
             .post(url)
@@ -54,7 +62,7 @@ impl ClientReq for Request {
         path: &str,
         content_type: &str,
         body: Bytes,
-    ) -> Result<Self, ServerFnError> {
+    ) -> Result<Self, ServerFnError<CustErr>> {
         let url = format!("{}{}", get_server_url(), path);
         Ok(CLIENT
             .post(url)
@@ -64,7 +72,7 @@ impl ClientReq for Request {
             .map_err(|e| ServerFnError::Request(e.to_string()))?)
     }
 
-    fn try_new_multipart(path: &str, body: Self::FormData) -> Result<Self, ServerFnError> {
+    fn try_new_multipart(path: &str, body: Self::FormData) -> Result<Self, ServerFnError<CustErr>> {
         Ok(CLIENT
             .post(path)
             .multipart(body)

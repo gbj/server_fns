@@ -4,7 +4,7 @@ use futures::{Stream, StreamExt};
 use http::{header::CONTENT_TYPE, Request};
 use http_body_util::BodyExt;
 
-impl Req for Request<Body> {
+impl<CustErr> Req<CustErr> for Request<Body> {
     fn as_query(&self) -> Option<&str> {
         self.uri().query()
     }
@@ -15,7 +15,7 @@ impl Req for Request<Body> {
             .map(|h| String::from_utf8_lossy(h.as_bytes()).to_string())
     }
 
-    async fn try_into_bytes(self) -> Result<Bytes, ServerFnError> {
+    async fn try_into_bytes(self) -> Result<Bytes, ServerFnError<CustErr>> {
         let (_parts, body) = self.into_parts();
 
         body.collect()
@@ -24,7 +24,7 @@ impl Req for Request<Body> {
             .map_err(|e| ServerFnError::Deserialization(e.to_string()))
     }
 
-    async fn try_into_string(self) -> Result<String, ServerFnError> {
+    async fn try_into_string(self) -> Result<String, ServerFnError<CustErr>> {
         let bytes = self.try_into_bytes().await?;
         let body = String::from_utf8(bytes.to_vec())
             .map_err(|e| ServerFnError::Deserialization(e.to_string()));
@@ -33,7 +33,8 @@ impl Req for Request<Body> {
 
     fn try_into_stream(
         self,
-    ) -> Result<impl Stream<Item = Result<Bytes, ServerFnError>> + Send, ServerFnError> {
+    ) -> Result<impl Stream<Item = Result<Bytes, ServerFnError>> + Send, ServerFnError<CustErr>>
+    {
         Ok(self
             .into_body()
             .into_data_stream()

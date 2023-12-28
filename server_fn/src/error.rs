@@ -112,7 +112,16 @@ pub enum ServerFnError<E = NoCustomError> {
     MissingArg(String),
 }
 
-impl std::fmt::Display for ServerFnError {
+impl<CustErr> From<CustErr> for ServerFnError<CustErr> {
+    fn from(value: CustErr) -> Self {
+        ServerFnError::WrappedServerError(value)
+    }
+}
+
+impl<CustErr> Display for ServerFnError<CustErr>
+where
+    CustErr: Display,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -146,15 +155,6 @@ where
             ServerFnError::WrappedServerError(e) => Some(e),
             _ => None,
         }
-    }
-}
-
-// We provide a conversion from a regular String to ServerFnError for you,
-// so you should be able to do this `fn function() -> Result<(), String>`
-// and handle that with `function()?`
-impl From<String> for ServerFnError<String> {
-    fn from(err: String) -> Self {
-        server_fn_error!(err)
     }
 }
 
@@ -197,8 +197,8 @@ pub enum ServerFnErrorErr<E = NoCustomError> {
     Response(String),
 }
 
-impl From<ServerFnError> for ServerFnErrorErr {
-    fn from(value: ServerFnError) -> Self {
+impl<CustErr> From<ServerFnError<CustErr>> for ServerFnErrorErr<CustErr> {
+    fn from(value: ServerFnError<CustErr>) -> Self {
         match value {
             ServerFnError::Registration(value) => ServerFnErrorErr::Registration(value),
             ServerFnError::Request(value) => ServerFnErrorErr::Request(value),

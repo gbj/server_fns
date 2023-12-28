@@ -25,35 +25,44 @@ pub use xxhash_rust;
 pub trait ServerFn
 where
     Self: Send
-        + FromReq<Self::ServerRequest, Self::InputEncoding>
-        + IntoReq<<Self::Client as Client>::Request, Self::InputEncoding>,
+        + FromReq<Self::Error, Self::ServerRequest, Self::InputEncoding>
+        + IntoReq<Self::Error, <Self::Client as Client<Self::Error>>::Request, Self::InputEncoding>,
 {
     const PATH: &'static str;
 
     /// The type of the HTTP client that will send the request from the client side.
     ///
     /// For example, this might be `gloo-net` in the browser, or `reqwest` for a desktop app.
-    type Client: Client;
+    type Client: Client<Self::Error>;
 
     /// The type of the HTTP request when received by the server function on the server side.
-    type ServerRequest: Req + Send;
+    type ServerRequest: Req<Self::Error> + Send;
 
     /// The type of the HTTP response returned by the server function on the server side.
-    type ServerResponse: Res + Send;
+    type ServerResponse: Res<Self::Error> + Send;
 
     /// The return type of the server function.
     ///
     /// This needs to be converted into `ServerResponse` on the server side, and converted
     /// *from* `ClientResponse` when received by the client.
-    type Output: IntoRes<Self::ServerResponse, Self::OutputEncoding>
-        + FromRes<<Self::Client as Client>::Response, Self::OutputEncoding>
+    type Output: IntoRes<Self::Error, Self::ServerResponse, Self::OutputEncoding>
+        + FromRes<Self::Error, <Self::Client as Client<Self::Error>>::Response, Self::OutputEncoding>
         + Send;
 
+    /// The [`Encoding`] used in the request for arguments into the server function.
     type InputEncoding: Encoding;
+
+    /// The [`Encoding`] used in the response for the result of the server function.
     type OutputEncoding: Encoding;
 
+    /// The type of the custom error on [`ServerFnError`], if any. (If there is no
+    /// custom error type, this can be `NoCustomError` by default.)
+    type Error;
+
     // the body of the fn
-    fn run_body(self) -> impl Future<Output = Result<Self::Output, ServerFnError>> + Send;
+    fn run_body(
+        self,
+    ) -> impl Future<Output = Result<Self::Output, ServerFnError<Self::Error>>> + Send;
 
     fn run_on_server(
         req: Self::ServerRequest,
@@ -65,7 +74,9 @@ where
         }
     }
 
-    fn run_on_client(self) -> impl Future<Output = Result<Self::Output, ServerFnError>> + Send {
+    fn run_on_client(
+        self,
+    ) -> impl Future<Output = Result<Self::Output, ServerFnError<Self::Error>>> + Send {
         async move {
             let req = self.into_req(Self::PATH)?;
             let res = Self::Client::send(req).await?;
@@ -77,7 +88,7 @@ where
     #[doc(hidden)]
     fn execute_on_server(
         req: Self::ServerRequest,
-    ) -> impl Future<Output = Result<Self::ServerResponse, ServerFnError>> + Send {
+    ) -> impl Future<Output = Result<Self::ServerResponse, ServerFnError<Self::Error>>> + Send {
         async {
             let this = Self::from_req(req).await?;
             let output = this.run_body().await?;

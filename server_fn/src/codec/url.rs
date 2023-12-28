@@ -14,24 +14,24 @@ impl Encoding for GetUrl {
     const CONTENT_TYPE: &'static str = "application/x-www-form-urlencoded";
 }
 
-impl<T, Request> IntoReq<Request, GetUrl> for T
+impl<CustErr, T, Request> IntoReq<CustErr, Request, GetUrl> for T
 where
-    Request: ClientReq,
+    Request: ClientReq<CustErr>,
     T: Serialize + Send,
 {
-    fn into_req(self, path: &str) -> Result<Request, ServerFnError> {
+    fn into_req(self, path: &str) -> Result<Request, ServerFnError<CustErr>> {
         let data =
             serde_qs::to_string(&self).map_err(|e| ServerFnError::Serialization(e.to_string()))?;
         Request::try_new_get(path, GetUrl::CONTENT_TYPE, &data)
     }
 }
 
-impl<T, Request> FromReq<Request, GetUrl> for T
+impl<CustErr, T, Request> FromReq<CustErr, Request, GetUrl> for T
 where
-    Request: Req + Send + 'static,
+    Request: Req<CustErr> + Send + 'static,
     T: DeserializeOwned,
 {
-    async fn from_req(req: Request) -> Result<Self, ServerFnError> {
+    async fn from_req(req: Request) -> Result<Self, ServerFnError<CustErr>> {
         let string_data = req.as_query().unwrap_or_default();
         let args = serde_qs::from_str::<Self>(string_data)
             .map_err(|e| ServerFnError::Args(e.to_string()))?;
@@ -43,24 +43,24 @@ impl Encoding for PostUrl {
     const CONTENT_TYPE: &'static str = "application/x-www-form-urlencoded";
 }
 
-impl<T, Request> IntoReq<Request, PostUrl> for T
+impl<CustErr, T, Request> IntoReq<CustErr, Request, PostUrl> for T
 where
-    Request: ClientReq,
+    Request: ClientReq<CustErr>,
     T: Serialize + Send,
 {
-    fn into_req(self, path: &str) -> Result<Request, ServerFnError> {
+    fn into_req(self, path: &str) -> Result<Request, ServerFnError<CustErr>> {
         let qs =
             serde_qs::to_string(&self).map_err(|e| ServerFnError::Serialization(e.to_string()))?;
         Request::try_new_post(path, PostUrl::CONTENT_TYPE, qs)
     }
 }
 
-impl<T, Request> FromReq<Request, PostUrl> for T
+impl<CustErr, T, Request> FromReq<CustErr, Request, PostUrl> for T
 where
-    Request: Req + Send + 'static,
+    Request: Req<CustErr> + Send + 'static,
     T: DeserializeOwned,
 {
-    async fn from_req(req: Request) -> Result<Self, ServerFnError> {
+    async fn from_req(req: Request) -> Result<Self, ServerFnError<CustErr>> {
         let string_data = req.try_into_string().await?;
         let args = serde_qs::from_str::<Self>(&string_data)
             .map_err(|e| ServerFnError::Args(e.to_string()))?;
@@ -72,10 +72,10 @@ where
 impl<T, Request, Response> Codec<Request, Response, GetUrlJson> for T
 where
     T: DeserializeOwned + Serialize + Send,
-    Request: Req + Send,
-    Response: Res + Send,
+    Request: Req<CustErr> + Send,
+    Response: Res<CustErr> + Send,
 {
-    async fn from_req(req: Request) -> Result<Self, ServerFnError> {
+    async fn from_req(req: Request) -> Result<Self, ServerFnError<CustErr>> {
         let string_data = req.try_into_string()?;
 
         let args = serde_json::from_str::<Self>(&string_data)
@@ -83,7 +83,7 @@ where
         Ok(args)
     }
 
-    async fn into_req(self) -> Result<Request, ServerFnError> {
+    async fn into_req(self) -> Result<Request, ServerFnError<CustErr>> {
         /* let qs = serde_qs::to_string(&self)?;
         let req = http::Request::builder()
             .method("GET")
@@ -96,7 +96,7 @@ where
         todo!()
     }
 
-    async fn from_res(res: Response) -> Result<Self, ServerFnError> {
+    async fn from_res(res: Response) -> Result<Self, ServerFnError<CustErr>> {
         todo!()
         /* let (_parts, body) = res.into_parts();
 

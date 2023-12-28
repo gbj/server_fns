@@ -25,10 +25,14 @@ impl From<FormData> for BrowserFormData {
     }
 }
 
-impl ClientReq for BrowserRequest {
+impl<CustErr> ClientReq<CustErr> for BrowserRequest {
     type FormData = BrowserFormData;
 
-    fn try_new_get(path: &str, content_type: &str, query: &str) -> Result<Self, ServerFnError> {
+    fn try_new_get(
+        path: &str,
+        content_type: &str,
+        query: &str,
+    ) -> Result<Self, ServerFnError<CustErr>> {
         let mut url = path.to_owned();
         url.push('?');
         url.push_str(query);
@@ -41,7 +45,11 @@ impl ClientReq for BrowserRequest {
         )))
     }
 
-    fn try_new_post(path: &str, content_type: &str, body: String) -> Result<Self, ServerFnError> {
+    fn try_new_post(
+        path: &str,
+        content_type: &str,
+        body: String,
+    ) -> Result<Self, ServerFnError<CustErr>> {
         Ok(Self(SendWrapper::new(
             Request::post(path)
                 // TODO 'Accept' header
@@ -55,7 +63,7 @@ impl ClientReq for BrowserRequest {
         path: &str,
         content_type: &str,
         body: Bytes,
-    ) -> Result<Self, ServerFnError> {
+    ) -> Result<Self, ServerFnError<CustErr>> {
         let body: &[u8] = &body;
         let body = Uint8Array::from(body).buffer();
         Ok(Self(SendWrapper::new(
@@ -67,7 +75,7 @@ impl ClientReq for BrowserRequest {
         )))
     }
 
-    fn try_new_multipart(path: &str, body: Self::FormData) -> Result<Self, ServerFnError> {
+    fn try_new_multipart(path: &str, body: Self::FormData) -> Result<Self, ServerFnError<CustErr>> {
         Ok(Self(SendWrapper::new(
             Request::post(path)
                 // TODO 'Accept' header

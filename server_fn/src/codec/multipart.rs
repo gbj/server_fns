@@ -41,23 +41,24 @@ impl From<FormData> for MultipartData {
     }
 }
 
-impl<T, Request> IntoReq<Request, MultipartFormData> for T
+impl<CustErr, T, Request> IntoReq<CustErr, Request, MultipartFormData> for T
 where
-    Request: ClientReq<FormData = BrowserFormData>,
+    Request: ClientReq<CustErr, FormData = BrowserFormData>,
     T: Into<MultipartData>,
 {
-    fn into_req(self, path: &str) -> Result<Request, ServerFnError> {
+    fn into_req(self, path: &str) -> Result<Request, ServerFnError<CustErr>> {
         let multi = self.into();
         Request::try_new_multipart(path, multi.into_client_data().unwrap())
     }
 }
 
-impl<T, Request> FromReq<Request, MultipartFormData> for T
+impl<CustErr, T, Request> FromReq<CustErr, Request, MultipartFormData> for T
 where
-    Request: Req + Send + 'static,
+    Request: Req<CustErr> + Send + 'static,
     T: From<MultipartData>,
+    CustErr: 'static,
 {
-    async fn from_req(req: Request) -> Result<Self, ServerFnError> {
+    async fn from_req(req: Request) -> Result<Self, ServerFnError<CustErr>> {
         let boundary = req
             .to_content_type()
             .and_then(|ct| multer::parse_boundary(ct).ok())
