@@ -8,7 +8,6 @@
 
 use convert_case::{Case, Converter};
 use proc_macro2::{Literal, Span, TokenStream as TokenStream2};
-use proc_macro_error::{abort, abort_call_site};
 use quote::{quote, quote_spanned, ToTokens};
 use syn::{
     parse::{Parse, ParseStream},
@@ -184,10 +183,10 @@ pub fn server_macro_impl(
             }
         }
 
-        abort!(
-            return_ty,
-            "server functions should return Result<T, ServerFnError>"
-        );
+        return Err(syn::Error::new(
+            return_ty.span(),
+            "server functions should return Result<T, ServerFnError>",
+        ));
     };
 
     // build server fn path
@@ -315,7 +314,7 @@ pub fn server_macro_impl(
             ::actix_web::HttpRequest
         }
     } else {
-        abort_call_site!("If the `ssr` feature is enabled, either the `actix` or `axum` features should also be enabled.")
+        return Err(syn::Error::new(Span::call_site(), "If the `ssr` feature is enabled, either the `actix` or `axum` features should also be enabled."));
     };
     let res = if !cfg!(feature = "ssr") {
         quote! {
@@ -330,7 +329,7 @@ pub fn server_macro_impl(
             ::actix_web::HttpResponse
         }
     } else {
-        abort_call_site!("If the `ssr` feature is enabled, either the `actix` or `axum` features should also be enabled.")
+        return Err(syn::Error::new(Span::call_site(), "If the `ssr` feature is enabled, either the `actix` or `axum` features should also be enabled."));
     };
 
     // generate path
