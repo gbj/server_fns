@@ -340,7 +340,6 @@ pub fn server_macro_impl(
         } else {
             #server_fn_path::const_format::concatcp!(
                 #prefix,
-                "/",
                 #fn_path
             )
         }

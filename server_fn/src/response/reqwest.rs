@@ -27,4 +27,12 @@ impl<CustErr> ClientRes<CustErr> for Response {
             .bytes_stream()
             .map_err(|e| ServerFnError::Response(e.to_string())))
     }
+
+    fn status(&self) -> u16 {
+        self.status().as_u16()
+    }
+
+    fn status_text(&self) -> String {
+        self.status().to_string()
+    }
 }

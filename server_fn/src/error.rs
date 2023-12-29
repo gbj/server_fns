@@ -1,10 +1,11 @@
 use core::fmt::{self, Display};
 
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 /// An empty value indicating that there is no custom error type associated
 /// with this server function.
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct NoCustomError(());
 
 // Implement `Display` for `NoCustomError`
@@ -91,7 +92,8 @@ impl<E> ViaError<E> for WrapError<E> {
 /// Unlike [`ServerFnErrorErr`], this does not implement [`Error`](std::error::Error).
 /// This means that other error types can easily be converted into it using the
 /// `?` operator.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type")]
 pub enum ServerFnError<E = NoCustomError> {
     WrappedServerError(E),
     /// Error while trying to register the server function (only occurs in case of poisoned RwLock).

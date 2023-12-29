@@ -48,6 +48,10 @@ pub trait ClientRes<CustErr> {
         impl Stream<Item = Result<Bytes, ServerFnError>> + Send + 'static,
         ServerFnError<CustErr>,
     >;
+
+    fn status(&self) -> u16;
+
+    fn status_text(&self) -> String;
 }
 
 /// A mocked response type that can be used in place of the actual server response,

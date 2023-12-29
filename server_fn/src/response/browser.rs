@@ -55,4 +55,12 @@ impl<CustErr> ClientRes<CustErr> for BrowserResponse {
             });
         Ok(SendWrapper::new(stream))
     }
+
+    fn status(&self) -> u16 {
+        self.0.status()
+    }
+
+    fn status_text(&self) -> String {
+        self.0.status_text()
+    }
 }

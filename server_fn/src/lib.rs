@@ -11,7 +11,8 @@ use dashmap::DashMap;
 pub use error::ServerFnError;
 use once_cell::sync::Lazy;
 use request::Req;
-use response::Res;
+use response::{ClientRes, Res};
+use serde::{de::DeserializeOwned, Serialize};
 use std::{future::Future, pin::Pin};
 
 // reexports for the sake of the macro
@@ -57,7 +58,7 @@ where
 
     /// The type of the custom error on [`ServerFnError`], if any. (If there is no
     /// custom error type, this can be `NoCustomError` by default.)
-    type Error;
+    type Error: Serialize + DeserializeOwned;
 
     // the body of the fn
     fn run_body(
@@ -78,10 +79,28 @@ where
         self,
     ) -> impl Future<Output = Result<Self::Output, ServerFnError<Self::Error>>> + Send {
         async move {
+            // create and send request on client
             let req = self.into_req(Self::PATH)?;
             let res = Self::Client::send(req).await?;
-            let output = Self::Output::from_res(res).await?;
-            Ok(output)
+
+            // if it returns an error status, deserialize the error
+            // this is the same logic as the current implementation of server fns
+            let status = res.status();
+            if (400..=599).contains(&status) {
+                let status_text = res.status_text();
+                let text = res.try_into_string().await?;
+                match serde_json::from_str(&text) {
+                    Ok(e) => Err(e),
+                    Err(_) => Err(ServerFnError::ServerError(if text.is_empty() {
+                        format!("{} {}", status, status_text)
+                    } else {
+                        format!("{} {}: {}", status, status_text, text)
+                    })),
+                }
+            } else {
+                // otherwise, deserialize the body as is
+                Self::Output::from_res(res).await
+            }
         }
     }
 
