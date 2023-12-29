@@ -85,6 +85,7 @@ where
 
             // if it returns an error status, deserialize the error
             // this is the same logic as the current implementation of server fns
+            // TODO I don't love that this requires shipping `serde_json` for errors
             let status = res.status();
             if (400..=599).contains(&status) {
                 let status_text = res.status_text();
