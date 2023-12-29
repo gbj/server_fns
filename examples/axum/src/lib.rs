@@ -1,6 +1,8 @@
 pub mod app;
 #[cfg(feature = "ssr")]
 pub mod fileserv;
+#[cfg(feature = "ssr")]
+mod layer;
 
 use crate::app::*;
 use tachys::prelude::*;

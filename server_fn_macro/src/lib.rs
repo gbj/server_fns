@@ -44,7 +44,23 @@ pub fn server_macro_impl(
     server_fn_path: Option<Path>,
     default_path: &str,
 ) -> Result<TokenStream2> {
-    let body = syn::parse::<ServerFnBody>(body.into())?;
+    let mut body = syn::parse::<ServerFnBody>(body.into())?;
+
+    // extract all #[middleware] attributes, removing them from signature of dummy
+    let mut middlewares: Vec<Middleware> = vec![];
+    body.attrs.retain(|attr| {
+        if attr.meta.path().is_ident("middleware") {
+            if let Ok(middleware) = attr.parse_args() {
+                middlewares.push(middleware);
+                false
+            } else {
+                true
+            }
+        } else {
+            true
+        }
+    });
+
     let dummy = body.to_dummy_output();
     let dummy_name = body.to_dummy_ident();
     let args = syn::parse::<ServerFnArgs>(args.into())?;
@@ -347,6 +363,17 @@ pub fn server_macro_impl(
 
     // only emit the dummy (unmodified server-only body) for the server build
     let dummy = cfg!(feature = "ssr").then_some(dummy);
+    let middlewares = if cfg!(feature = "ssr") {
+        quote! {
+            vec![
+                #(
+                    std::sync::Arc::new(#middlewares),
+                ),*
+            ]
+        }
+    } else {
+        quote! { vec![] }
+    };
 
     Ok(quote::quote! {
         #args_docs
@@ -371,6 +398,10 @@ pub fn server_macro_impl(
             type OutputEncoding = #output;
             type Error = #error_ty;
 
+            fn middlewares() -> Vec<std::sync::Arc<dyn #server_fn_path::middleware::Layer<#req, #res>>> {
+                #middlewares
+            }
+
             #run_body
         }
 
@@ -380,6 +411,27 @@ pub fn server_macro_impl(
 
         #dummy
     })
+}
+
+#[derive(Debug)]
+struct Middleware {
+    expr: syn::Expr,
+}
+
+impl ToTokens for Middleware {
+    fn to_tokens(&self, tokens: &mut TokenStream2) {
+        let expr = &self.expr;
+        tokens.extend(quote::quote! {
+            #expr
+        });
+    }
+}
+
+impl Parse for Middleware {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let arg: syn::Expr = input.parse()?;
+        Ok(Middleware { expr: arg })
+    }
 }
 
 fn output_type(return_ty: &Type) -> Result<&GenericArgument> {

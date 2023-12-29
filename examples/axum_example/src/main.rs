@@ -19,6 +19,7 @@ async fn main() {
 
 // you can use the default setup
 #[server(endpoint = "/a", input = GetUrl)]
+#[middleware(tower_request_id::RequestIdLayer)]
 pub async fn a(value: i32) -> Result<i32, ServerFnError> {
     println!("on server");
     Ok(value * 2)

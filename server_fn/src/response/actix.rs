@@ -8,6 +8,12 @@ use std::fmt::Display;
 
 pub struct ActixResponse(pub(crate) SendWrapper<HttpResponse>);
 
+impl ActixResponse {
+    pub fn into_inner(self) -> HttpResponse {
+        self.0.take()
+    }
+}
+
 impl<CustErr> Res<CustErr> for ActixResponse
 where
     CustErr: Display,

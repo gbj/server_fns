@@ -1,6 +1,3 @@
-use std::collections::HashMap;
-use std::time::Duration;
-
 use futures::channel::mpsc::unbounded;
 use futures::StreamExt;
 use server_fn_macro_default::server;
@@ -11,6 +8,8 @@ use server_fns::{
     codec::{ByteStream, MultipartData},
     ServerFnError,
 };
+use std::collections::HashMap;
+use std::time::Duration;
 use tachys::tachydom::view::keyed::keyed;
 use tachys::{
     prelude::*,
@@ -27,6 +26,7 @@ use wasm_bindgen::JsCast;
 use web_sys::{FormData, HtmlFormElement};
 
 #[server(input = GetUrl)]
+#[middleware(crate::layer::LoggingLayer)]
 pub async fn server_fn_1(inp: i32) -> Result<i32, ServerFnError> {
     Ok(inp.wrapping_add(1))
 }

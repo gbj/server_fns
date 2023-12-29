@@ -2,6 +2,7 @@ pub mod client;
 pub mod codec;
 #[macro_use]
 pub mod error;
+pub mod middleware;
 pub mod redirect;
 pub mod request;
 pub mod response;
@@ -10,11 +11,12 @@ use client::Client;
 use codec::{Encoding, FromReq, FromRes, IntoReq, IntoRes};
 use dashmap::DashMap;
 pub use error::ServerFnError;
+use middleware::Layer;
 use once_cell::sync::Lazy;
 use request::Req;
 use response::{ClientRes, Res};
 use serde::{de::DeserializeOwned, Serialize};
-use std::{future::Future, pin::Pin};
+use std::{future::Future, pin::Pin, sync::Arc};
 
 // reexports for the sake of the macro
 #[doc(hidden)]
@@ -61,7 +63,12 @@ where
     /// custom error type, this can be `NoCustomError` by default.)
     type Error: Serialize + DeserializeOwned;
 
-    // the body of the fn
+    /// Middleware that should be applied to this server function.
+    fn middlewares() -> Vec<Arc<dyn Layer<Self::ServerRequest, Self::ServerResponse>>> {
+        Vec::new()
+    }
+
+    // The body of the server function. This will only run on the server.
     fn run_body(
         self,
     ) -> impl Future<Output = Result<Self::Output, ServerFnError<Self::Error>>> + Send;
@@ -182,7 +189,7 @@ type LazyServerFnMap<Req, Res> = Lazy<DashMap<&'static str, ServerFnTraitObj<Req
 // Axum integration
 #[cfg(feature = "axum")]
 pub mod axum {
-    use crate::{LazyServerFnMap, ServerFn, ServerFnTraitObj};
+    use crate::{middleware::BoxedService, LazyServerFnMap, ServerFn, ServerFnTraitObj};
     use axum::body::Body;
     use http::{Request, Response, StatusCode};
 
@@ -197,7 +204,16 @@ pub mod axum {
     {
         REGISTERED_SERVER_FUNCTIONS.insert(
             T::PATH,
-            ServerFnTraitObj::new(T::PATH, |req| Box::pin(T::run_on_server(req))),
+            ServerFnTraitObj::new(T::PATH, |req| {
+                // TODO handle middlewares
+                /* let middlewares = T::middlewares();
+                let mut service = BoxedService::new(handle_server_fn);
+                for middleware in middlewares {
+                    service = middleware.layer(service);
+                }
+                service */
+                Box::pin(T::run_on_server(req))
+            }),
         );
     }
 
@@ -208,11 +224,11 @@ pub mod axum {
             server_fn.run(req).await
         } else {
             Response::builder()
-            .status(StatusCode::BAD_REQUEST)
-            .body(Body::from(format!(
-                "Could not find a server function at the route {path}. \n\nIt's likely that either\n 1. The API prefix you specify in the `#[server]` macro doesn't match the prefix at which your server function handler is mounted, or \n2. You are on a platform that doesn't support automatic server function registration and you need to call ServerFn::register_explicit() on the server function type, somewhere in your `main` function.",
-            )))
-            .unwrap()
+                .status(StatusCode::BAD_REQUEST)
+                .body(Body::from(format!(
+                    "Could not find a server function at the route {path}. \n\nIt's likely that either\n 1. The API prefix you specify in the `#[server]` macro doesn't match the prefix at which your server function handler is mounted, or \n2. You are on a platform that doesn't support automatic server function registration and you need to call ServerFn::register_explicit() on the server function type, somewhere in your `main` function.",
+                )))
+                .unwrap()
         }
     }
 }
