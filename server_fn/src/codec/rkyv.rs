@@ -23,10 +23,10 @@ where
     T: Archive,
     T::Archived: for<'a> CheckBytes<DefaultValidator<'a>> + Deserialize<T, SharedDeserializeMap>,
 {
-    fn into_req(self, path: &str) -> Result<Request, ServerFnError<CustErr>> {
+    fn into_req(self, path: &str, accepts: &str) -> Result<Request, ServerFnError<CustErr>> {
         let encoded = rkyv::to_bytes::<T, 1024>(&self)?;
         let bytes = Bytes::copy_from_slice(encoded.as_ref());
-        Request::try_new_post_bytes(path, Rkyv::CONTENT_TYPE, bytes)
+        Request::try_new_post_bytes(path, accepts, Rkyv::CONTENT_TYPE, bytes)
     }
 }
 

@@ -5,7 +5,7 @@ use crate::error::ServerFnError;
 use super::ClientReq;
 use bytes::Bytes;
 use once_cell::sync::Lazy;
-use reqwest::header::CONTENT_TYPE;
+use reqwest::header::{ACCEPT, CONTENT_TYPE};
 pub use reqwest::{multipart::Form, Client, Method, Request, Url};
 
 pub(crate) static CLIENT: Lazy<Client> = Lazy::new(Client::new);
@@ -29,6 +29,7 @@ impl<CustErr> ClientReq<CustErr> for Request {
 
     fn try_new_get(
         path: &str,
+        accepts: &str,
         content_type: &str,
         query: &str,
     ) -> Result<Self, ServerFnError<CustErr>> {
@@ -39,6 +40,7 @@ impl<CustErr> ClientReq<CustErr> for Request {
         let req = CLIENT
             .get(url)
             .header(CONTENT_TYPE, content_type)
+            .header(ACCEPT, accepts)
             .build()
             .map_err(|e| ServerFnError::Request(e.to_string()))?;
         Ok(req)
@@ -46,6 +48,7 @@ impl<CustErr> ClientReq<CustErr> for Request {
 
     fn try_new_post(
         path: &str,
+        accepts: &str,
         content_type: &str,
         body: String,
     ) -> Result<Self, ServerFnError<CustErr>> {
@@ -53,6 +56,7 @@ impl<CustErr> ClientReq<CustErr> for Request {
         Ok(CLIENT
             .post(url)
             .header(CONTENT_TYPE, content_type)
+            .header(ACCEPT, accepts)
             .body(body)
             .build()
             .map_err(|e| ServerFnError::Request(e.to_string()))?)
@@ -60,6 +64,7 @@ impl<CustErr> ClientReq<CustErr> for Request {
 
     fn try_new_post_bytes(
         path: &str,
+        accepts: &str,
         content_type: &str,
         body: Bytes,
     ) -> Result<Self, ServerFnError<CustErr>> {
@@ -67,14 +72,20 @@ impl<CustErr> ClientReq<CustErr> for Request {
         Ok(CLIENT
             .post(url)
             .header(CONTENT_TYPE, content_type)
+            .header(ACCEPT, accepts)
             .body(body)
             .build()
             .map_err(|e| ServerFnError::Request(e.to_string()))?)
     }
 
-    fn try_new_multipart(path: &str, body: Self::FormData) -> Result<Self, ServerFnError<CustErr>> {
+    fn try_new_multipart(
+        path: &str,
+        accepts: &str,
+        body: Self::FormData,
+    ) -> Result<Self, ServerFnError<CustErr>> {
         Ok(CLIENT
             .post(path)
+            .header(ACCEPT, accepts)
             .multipart(body)
             .build()
             .map_err(|e| ServerFnError::Request(e.to_string()))?)

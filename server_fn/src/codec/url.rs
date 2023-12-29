@@ -19,10 +19,10 @@ where
     Request: ClientReq<CustErr>,
     T: Serialize + Send,
 {
-    fn into_req(self, path: &str) -> Result<Request, ServerFnError<CustErr>> {
+    fn into_req(self, path: &str, accepts: &str) -> Result<Request, ServerFnError<CustErr>> {
         let data =
             serde_qs::to_string(&self).map_err(|e| ServerFnError::Serialization(e.to_string()))?;
-        Request::try_new_get(path, GetUrl::CONTENT_TYPE, &data)
+        Request::try_new_get(path, accepts, GetUrl::CONTENT_TYPE, &data)
     }
 }
 
@@ -48,10 +48,10 @@ where
     Request: ClientReq<CustErr>,
     T: Serialize + Send,
 {
-    fn into_req(self, path: &str) -> Result<Request, ServerFnError<CustErr>> {
+    fn into_req(self, path: &str, accepts: &str) -> Result<Request, ServerFnError<CustErr>> {
         let qs =
             serde_qs::to_string(&self).map_err(|e| ServerFnError::Serialization(e.to_string()))?;
-        Request::try_new_post(path, PostUrl::CONTENT_TYPE, qs)
+        Request::try_new_post(path, accepts, PostUrl::CONTENT_TYPE, qs)
     }
 }
 

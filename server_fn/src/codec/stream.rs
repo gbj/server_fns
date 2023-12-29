@@ -18,7 +18,7 @@ where
     Request: ClientReq<CustErr>,
     T: Stream<Item = Bytes> + Send,
 {
-    fn into_req(self, path: &str) -> Result<Request, ServerFnError<CustErr>> {
+    fn into_req(self, path: &str, accepts: &str) -> Result<Request, ServerFnError<CustErr>> {
         Request::try_new_stream(path, ByteStream::CONTENT_TYPE, self)
     }
 } */

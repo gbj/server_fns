@@ -22,22 +22,29 @@ where
     fn try_new_get(
         path: &str,
         content_type: &str,
+        accepts: &str,
         query: &str,
     ) -> Result<Self, ServerFnError<CustErr>>;
 
     fn try_new_post(
         path: &str,
         content_type: &str,
+        accepts: &str,
         body: String,
     ) -> Result<Self, ServerFnError<CustErr>>;
 
     fn try_new_post_bytes(
         path: &str,
         content_type: &str,
+        accepts: &str,
         body: Bytes,
     ) -> Result<Self, ServerFnError<CustErr>>;
 
-    fn try_new_multipart(path: &str, body: Self::FormData) -> Result<Self, ServerFnError<CustErr>>;
+    fn try_new_multipart(
+        path: &str,
+        accepts: &str,
+        body: Self::FormData,
+    ) -> Result<Self, ServerFnError<CustErr>>;
 }
 
 /// Represents the request as received by the server.

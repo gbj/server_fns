@@ -33,7 +33,7 @@ where
 }
 
 pub trait IntoReq<CustErr, Request, Encoding> {
-    fn into_req(self, path: &str) -> Result<Request, ServerFnError<CustErr>>;
+    fn into_req(self, path: &str, accepts: &str) -> Result<Request, ServerFnError<CustErr>>;
 }
 
 pub trait FromRes<CustErr, Response, Encoding>

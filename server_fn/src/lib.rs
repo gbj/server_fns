@@ -80,7 +80,7 @@ where
     ) -> impl Future<Output = Result<Self::Output, ServerFnError<Self::Error>>> + Send {
         async move {
             // create and send request on client
-            let req = self.into_req(Self::PATH)?;
+            let req = self.into_req(Self::PATH, Self::OutputEncoding::CONTENT_TYPE)?;
             let res = Self::Client::send(req).await?;
 
             // if it returns an error status, deserialize the error

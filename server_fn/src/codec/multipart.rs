@@ -46,9 +46,9 @@ where
     Request: ClientReq<CustErr, FormData = BrowserFormData>,
     T: Into<MultipartData>,
 {
-    fn into_req(self, path: &str) -> Result<Request, ServerFnError<CustErr>> {
+    fn into_req(self, path: &str, accepts: &str) -> Result<Request, ServerFnError<CustErr>> {
         let multi = self.into();
-        Request::try_new_multipart(path, multi.into_client_data().unwrap())
+        Request::try_new_multipart(path, accepts, multi.into_client_data().unwrap())
     }
 }
 

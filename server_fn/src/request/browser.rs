@@ -30,6 +30,7 @@ impl<CustErr> ClientReq<CustErr> for BrowserRequest {
 
     fn try_new_get(
         path: &str,
+        accepts: &str,
         content_type: &str,
         query: &str,
     ) -> Result<Self, ServerFnError<CustErr>> {
@@ -38,8 +39,8 @@ impl<CustErr> ClientReq<CustErr> for BrowserRequest {
         url.push_str(query);
         Ok(Self(SendWrapper::new(
             Request::get(&url)
-                // TODO 'Accept' header
                 .header("Content-Type", content_type)
+                .header("Accept", accepts)
                 .build()
                 .map_err(|e| ServerFnError::Request(e.to_string()))?,
         )))
@@ -47,13 +48,14 @@ impl<CustErr> ClientReq<CustErr> for BrowserRequest {
 
     fn try_new_post(
         path: &str,
+        accepts: &str,
         content_type: &str,
         body: String,
     ) -> Result<Self, ServerFnError<CustErr>> {
         Ok(Self(SendWrapper::new(
             Request::post(path)
-                // TODO 'Accept' header
                 .header("Content-Type", content_type)
+                .header("Accept", accepts)
                 .body(body)
                 .map_err(|e| ServerFnError::Request(e.to_string()))?,
         )))
@@ -61,6 +63,7 @@ impl<CustErr> ClientReq<CustErr> for BrowserRequest {
 
     fn try_new_post_bytes(
         path: &str,
+        accepts: &str,
         content_type: &str,
         body: Bytes,
     ) -> Result<Self, ServerFnError<CustErr>> {
@@ -68,17 +71,21 @@ impl<CustErr> ClientReq<CustErr> for BrowserRequest {
         let body = Uint8Array::from(body).buffer();
         Ok(Self(SendWrapper::new(
             Request::post(path)
-                // TODO 'Accept' header
                 .header("Content-Type", content_type)
+                .header("Accept", accepts)
                 .body(body)
                 .map_err(|e| ServerFnError::Request(e.to_string()))?,
         )))
     }
 
-    fn try_new_multipart(path: &str, body: Self::FormData) -> Result<Self, ServerFnError<CustErr>> {
+    fn try_new_multipart(
+        path: &str,
+        accepts: &str,
+        body: Self::FormData,
+    ) -> Result<Self, ServerFnError<CustErr>> {
         Ok(Self(SendWrapper::new(
             Request::post(path)
-                // TODO 'Accept' header
+                .header("Accept", accepts)
                 .body(body.0.take())
                 .map_err(|e| ServerFnError::Request(e.to_string()))?,
         )))
