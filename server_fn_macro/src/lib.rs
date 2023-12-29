@@ -241,7 +241,8 @@ pub fn server_macro_impl(
                     #struct_name::PATH,
                     |req| {
                         Box::pin(#struct_name::run_on_server(req))
-                    }
+                    },
+                    #struct_name::middlewares
                 )
             }}
         }

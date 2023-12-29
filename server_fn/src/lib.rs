@@ -11,7 +11,7 @@ use client::Client;
 use codec::{Encoding, FromReq, FromRes, IntoReq, IntoRes};
 use dashmap::DashMap;
 pub use error::ServerFnError;
-use middleware::Layer;
+use middleware::{Layer, Service};
 use once_cell::sync::Lazy;
 use request::Req;
 use response::{ClientRes, Res};
@@ -157,22 +157,35 @@ macro_rules! initialize_server_fn_map {
 pub struct ServerFnTraitObj<Req, Res> {
     path: &'static str,
     handler: fn(Req) -> Pin<Box<dyn Future<Output = Res> + Send>>,
+    middleware: fn() -> Vec<Arc<dyn Layer<Req, Res>>>,
 }
 
 impl<Req, Res> ServerFnTraitObj<Req, Res> {
     pub const fn new(
         path: &'static str,
         handler: fn(Req) -> Pin<Box<dyn Future<Output = Res> + Send>>,
+        middleware: fn() -> Vec<Arc<dyn Layer<Req, Res>>>,
     ) -> Self {
-        Self { path, handler }
+        Self {
+            path,
+            handler,
+            middleware,
+        }
     }
 
     pub fn path(&self) -> &'static str {
         self.path
     }
+}
 
-    pub async fn run(&self, req: Req) -> Res {
-        (self.handler)(req).await
+impl<Req, Res> Service<Req, Res> for ServerFnTraitObj<Req, Res>
+where
+    Req: Send + 'static,
+    Res: 'static,
+{
+    fn run(&mut self, req: Req) -> Pin<Box<dyn Future<Output = Res> + Send>> {
+        let handler = self.handler;
+        Box::pin(async move { handler(req).await })
     }
 }
 
@@ -189,7 +202,10 @@ type LazyServerFnMap<Req, Res> = Lazy<DashMap<&'static str, ServerFnTraitObj<Req
 // Axum integration
 #[cfg(feature = "axum")]
 pub mod axum {
-    use crate::{middleware::BoxedService, LazyServerFnMap, ServerFn, ServerFnTraitObj};
+    use crate::{
+        middleware::{BoxedService, Layer, Service},
+        LazyServerFnMap, ServerFn, ServerFnTraitObj,
+    };
     use axum::body::Body;
     use http::{Request, Response, StatusCode};
 
@@ -204,16 +220,11 @@ pub mod axum {
     {
         REGISTERED_SERVER_FUNCTIONS.insert(
             T::PATH,
-            ServerFnTraitObj::new(T::PATH, |req| {
-                // TODO handle middlewares
-                /* let middlewares = T::middlewares();
-                let mut service = BoxedService::new(handle_server_fn);
-                for middleware in middlewares {
-                    service = middleware.layer(service);
-                }
-                service */
-                Box::pin(T::run_on_server(req))
-            }),
+            ServerFnTraitObj::new(
+                T::PATH,
+                |req| Box::pin(T::run_on_server(req)),
+                T::middlewares,
+            ),
         );
     }
 
@@ -221,7 +232,12 @@ pub mod axum {
         let path = req.uri().path();
 
         if let Some(server_fn) = REGISTERED_SERVER_FUNCTIONS.get(path) {
-            server_fn.run(req).await
+            let middleware = (server_fn.middleware)();
+            let mut service = BoxedService::new(*server_fn);
+            for middleware in middleware {
+                service = middleware.layer(service);
+            }
+            service.run(req).await
         } else {
             Response::builder()
                 .status(StatusCode::BAD_REQUEST)
