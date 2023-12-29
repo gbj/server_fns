@@ -3,6 +3,6 @@
   - [ ] allow manual registration
 - [x] macro implementation
 - [x] handle error codes in client (i.e., server fn not found)
-- [ ] router hook for redirects
+- [x] router hook for redirects
 - [ ] is this compatible with adding middle per server fn?
 - [ ] modifying Response (maybe framework-specific?)

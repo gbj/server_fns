@@ -2,6 +2,7 @@ pub mod client;
 pub mod codec;
 #[macro_use]
 pub mod error;
+pub mod redirect;
 pub mod request;
 pub mod response;
 
@@ -83,11 +84,13 @@ where
             let req = self.into_req(Self::PATH, Self::OutputEncoding::CONTENT_TYPE)?;
             let res = Self::Client::send(req).await?;
 
+            let status = res.status();
+            let location = res.location();
+
             // if it returns an error status, deserialize the error
             // this is the same logic as the current implementation of server fns
             // TODO I don't love that this requires shipping `serde_json` for errors
-            let status = res.status();
-            if (400..=599).contains(&status) {
+            let res = if (400..=599).contains(&status) {
                 let status_text = res.status_text();
                 let text = res.try_into_string().await?;
                 match serde_json::from_str(&text) {
@@ -101,7 +104,14 @@ where
             } else {
                 // otherwise, deserialize the body as is
                 Self::Output::from_res(res).await
+            };
+
+            // if redirected, call the redirect hook (if that's been set)
+            if (300..=399).contains(&status) {
+                redirect::call_redirect_hook(&location);
             }
+
+            res
         }
     }
 

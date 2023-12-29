@@ -63,4 +63,11 @@ impl<CustErr> ClientRes<CustErr> for BrowserResponse {
     fn status_text(&self) -> String {
         self.0.status_text()
     }
+
+    fn location(&self) -> String {
+        self.0
+            .headers()
+            .get("Location")
+            .unwrap_or_else(|| self.0.url())
+    }
 }

@@ -35,4 +35,11 @@ impl<CustErr> ClientRes<CustErr> for Response {
     fn status_text(&self) -> String {
         self.status().to_string()
     }
+
+    fn location(&self) -> String {
+        self.headers()
+            .get("Location")
+            .map(|value| String::from_utf8_lossy(value.as_bytes()).to_string())
+            .unwrap_or_else(|| self.url().to_string())
+    }
 }

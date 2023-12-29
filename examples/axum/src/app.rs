@@ -26,12 +26,12 @@ use tachys::{
 use wasm_bindgen::JsCast;
 use web_sys::{FormData, HtmlFormElement};
 
-/* #[server]
+#[server(input = GetUrl)]
 pub async fn server_fn_1(inp: i32) -> Result<i32, ServerFnError> {
     Ok(inp.wrapping_add(1))
 }
 
-#[server(encoding = "Cbor")]
+/*#[server(encoding = "Cbor")]
 pub async fn server_fn_2(inp: i32) -> Result<i32, ServerFnError> {
     Ok(inp.wrapping_add(2))
 }
@@ -58,7 +58,7 @@ pub async fn streaming() -> Result<ByteStream, ServerFnError> {
     Ok(ByteStream::from(stream.map(|n| n.to_string())))
 } */
 
-#[server(input = MultipartFormData, output = StreamingText)]
+/* #[server(input = MultipartFormData, output = StreamingText)]
 pub async fn multipart_upload(data: MultipartData) -> Result<TextStream, ServerFnError> {
     use bytes::Bytes;
     use futures::channel::mpsc::unbounded;
@@ -81,10 +81,14 @@ pub async fn multipart_upload(data: MultipartData) -> Result<TextStream, ServerF
     });
 
     Ok(TextStream::from(rx))
-}
+} */
 
 pub fn my_app() -> impl RenderHtml<Dom> {
-    let progress: RwSignal<HashMap<String, (u32, u32)>> = RwSignal::new(HashMap::new());
+    server_fns::redirect::set_redirect_hook(|path| {
+        tachys::tachydom::log(&format!("redirecting to {path:?}"));
+    });
+
+    /* let progress: RwSignal<HashMap<String, (u32, u32)>> = RwSignal::new(HashMap::new());
     let input_ref = NodeRef::<Input>::new();
     let form_ref = NodeRef::<Form>::new();
     let on_submit = move |ev: SubmitEvent| {
@@ -141,52 +145,58 @@ pub fn my_app() -> impl RenderHtml<Dom> {
                 }
             },
         )
-    };
+    }; */
 
     view! {
-            <form on:submit=on_submit
-                node_ref=form_ref
-                method="post"
-                enctype="multipart/form-data"
-                action=MultipartUpload::url()
-            >
-                <input type="file" node_ref=input_ref multiple/>
-                <button>"Upload"</button>
-            </form>
-            {progress}
-    /*         <button on:click=|_| {
-                spawn_local(async move {
-                    let mut stream = streaming().await.unwrap().into_inner();
-                    while let Some(value) = stream.next().await {
-                        tachys::tachydom::log(&format!("{:?}", value));
-                    }
-                })
-            }>
-                "Streaming"
-            </button>
-            <button
-                on:click=move |_| spawn_local(async move {
-                    let new_count = server_fn_1(count.get()).await.expect("server fn failed");
-                    set_count.set(new_count);
-                })
-            >
-                "JSON " {move || count.get()}
-            </button>
-            <button
-                on:click=move |_| spawn_local(async move {
-                    let new_count = server_fn_2(count2.get()).await.expect("server fn failed");
-                    set_count2.set(new_count);
-                })
-            >
-                "CBOR " {move || count2.get()}
-            </button>
-            <button
-                on:click=move |_| spawn_local(async move {
-                    let new_count = server_fn_3(count2.get()).await.expect("server fn failed");
-                    set_count3.set(new_count);
-                })
-            >
-                "Get/CBOR " {move || count3.get()}
-            </button> */
-        }
+    <button on:click=move |_| {
+        spawn_local(async move {
+            let value = server_fn_1(1).await;
+            tachys::tachydom::log(&format!("value = {value:?}"));
+        });
+    }>"+1"</button>
+        /*<form on:submit=on_submit
+            node_ref=form_ref
+            method="post"
+            enctype="multipart/form-data"
+            action=MultipartUpload::url()
+        >
+            <input type="file" node_ref=input_ref multiple/>
+            <button>"Upload"</button>
+        </form>
+        {progress}
+         <button on:click=|_| {
+            spawn_local(async move {
+                let mut stream = streaming().await.unwrap().into_inner();
+                while let Some(value) = stream.next().await {
+                    tachys::tachydom::log(&format!("{:?}", value));
+                }
+            })
+        }>
+            "Streaming"
+        </button>
+        <button
+            on:click=move |_| spawn_local(async move {
+                let new_count = server_fn_1(count.get()).await.expect("server fn failed");
+                set_count.set(new_count);
+            })
+        >
+            "JSON " {move || count.get()}
+        </button>
+        <button
+            on:click=move |_| spawn_local(async move {
+                let new_count = server_fn_2(count2.get()).await.expect("server fn failed");
+                set_count2.set(new_count);
+            })
+        >
+            "CBOR " {move || count2.get()}
+        </button>
+        <button
+            on:click=move |_| spawn_local(async move {
+                let new_count = server_fn_3(count2.get()).await.expect("server fn failed");
+                set_count3.set(new_count);
+            })
+        >
+            "Get/CBOR " {move || count3.get()}
+        </button> */
+    }
 }

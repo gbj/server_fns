@@ -49,9 +49,14 @@ pub trait ClientRes<CustErr> {
         ServerFnError<CustErr>,
     >;
 
+    /// HTTP status code of the response.
     fn status(&self) -> u16;
 
+    /// Status text for the status code.
     fn status_text(&self) -> String;
+
+    /// The `Location` header or (if none is set), the URL of the response.
+    fn location(&self) -> String;
 }
 
 /// A mocked response type that can be used in place of the actual server response,
