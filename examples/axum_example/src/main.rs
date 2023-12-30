@@ -25,11 +25,11 @@ pub async fn a(value: i32) -> Result<i32, ServerFnError> {
 }
 
 // you can use any other error type
-#[server(endpoint = "/b", input = GetUrl)]
+/* #[server(endpoint = "/b", input = GetUrl)]
 pub async fn b() -> Result<(), ServerFnError<std::io::Error>> {
     std::fs::read("./test.txt")?;
     Ok(())
-}
+} */
 
 /* #[server(endpoint = "/c", input = GetUrl)]
 pub async fn c(value: i32) -> Result<i32, ServerFnError<std::io::Error>> {
