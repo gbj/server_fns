@@ -23,7 +23,7 @@ tower-http = { version = "0.5", features = ["fs"], optional = true }
 thiserror = "1.0.38"
 tracing = { version = "0.1.37", optional = true }
 http = "1"
-tachys = { path = "/Users/gjohnston/Documents/Projects/tachys/tachys", features = [
+tachys = { git = "https://github.com/gbj/tachys", features = [
     "nightly",
     "hydration",
 ] }
