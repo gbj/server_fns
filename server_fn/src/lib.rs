@@ -25,6 +25,12 @@ pub use const_format;
 pub use serde;
 #[doc(hidden)]
 pub use xxhash_rust;
+#[cfg(feature = "axum")]
+#[doc(hidden)]
+pub use ::axum as axum_export;
+#[cfg(feature = "actix")]
+#[doc(hidden)]
+pub use ::actix_web as actix_export;
 
 pub trait ServerFn
 where

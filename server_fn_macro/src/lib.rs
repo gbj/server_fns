@@ -317,11 +317,11 @@ pub fn server_macro_impl(
         }
     } else if cfg!(feature = "axum") {
         quote! {
-            ::axum::http::Request<::axum::body::Body>
+            #server_fn_path::axum_export::http::Request<#server_fn_path::axum_export::body::Body>
         }
     } else if cfg!(feature = "actix") {
         quote! {
-            ::actix_web::HttpRequest
+            #server_fn_path::actix_export::HttpRequest
         }
     } else {
         return Err(syn::Error::new(Span::call_site(), "If the `ssr` feature is enabled, either the `actix` or `axum` features should also be enabled."));
@@ -332,11 +332,11 @@ pub fn server_macro_impl(
         }
     } else if cfg!(feature = "axum") {
         quote! {
-            ::axum::http::Response<::axum::body::Body>
+            #server_fn_path::axum_export::http::Response<#server_fn_path::axum_export::body::Body>
         }
     } else if cfg!(feature = "actix") {
         quote! {
-            ::actix_web::HttpResponse
+            #server_fn_path::actix_export::HttpResponse
         }
     } else {
         return Err(syn::Error::new(Span::call_site(), "If the `ssr` feature is enabled, either the `actix` or `axum` features should also be enabled."));
